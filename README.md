@@ -41,6 +41,26 @@ A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-p
 | Page performance | Top 10 pages: views, unique views, avg. time, bounce rate, exit rate |
 | User flow | Entry pages, most engaged pages, exit pages |
 
+### CP Dashboard Widget
+
+A compact widget is automatically injected into the Statamic Control Panel dashboard, displaying at-a-glance stats for the last 7 days:
+
+- Visits today
+- Total page views (7 days)
+- Unique visitors (7 days)
+
+The widget links directly to the analytics dashboard. It is auto-injected if no `analytics_overview` entry is already present in `config/statamic/cp.php`. To control its position or width, add it explicitly:
+
+```php
+// config/statamic/cp.php
+'widgets' => [
+    ['type' => 'analytics_overview', 'width' => 50],
+    // ...
+],
+```
+
+---
+
 ### Privacy & tracking
 - Consent banner (disabled by default) with granular controls
 - Bot filtering
