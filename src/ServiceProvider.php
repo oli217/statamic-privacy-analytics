@@ -37,6 +37,10 @@ class ServiceProvider extends AddonServiceProvider
         Tags\ConsentBanner::class,
     ];
 
+    protected $widgets = [
+        Widgets\AnalyticsOverviewWidget::class,
+    ];
+
     protected $vite = [
         'input' => [
             'resources/js/consent-banner.js',
@@ -68,6 +72,14 @@ class ServiceProvider extends AddonServiceProvider
 
         // Ensure storage directory exists with proper permissions (if using file driver)
         $this->ensureStorageDirectoryExists();
+
+        // Auto-inject the analytics overview widget into the CP dashboard if not already configured
+        $widgets = config('statamic.cp.widgets', []);
+        if (!collect($widgets)->contains('type', 'analytics_overview')) {
+            config(['statamic.cp.widgets' => array_merge($widgets, [
+                ['type' => 'analytics_overview', 'width' => 50],
+            ])]);
+        }
 
         // Register the nav item
         Nav::extend(function ($nav) {
