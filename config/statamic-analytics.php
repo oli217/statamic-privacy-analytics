@@ -33,6 +33,7 @@ return [
     |
     */
     'geolocation' => [
+        'enabled' => true, // set to false to disable ip-api.com lookups entirely
         'cache_duration' => 60 * 24, // Cache IP geolocation data for 24 hours
         'rate_limit' => 45, // Requests per minute
     ],

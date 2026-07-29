@@ -67,6 +67,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Configurable excluded paths and IPs
 - Optional authenticated user tracking
 - Geolocation optional per-visitor via consent settings
+- Geolocation globally disableable (`geolocation.enabled: false`) — no call to ip-api.com, no third-party data transfer
 
 ---
 
@@ -105,6 +106,7 @@ The addon starts tracking immediately. Access the dashboard via **Control Panel 
 ```php
 return [
     'geolocation' => [
+        'enabled'        => true, // set to false to disable ip-api.com entirely (no third-party transfer)
         'cache_duration' => 1440, // minutes (24h)
         'rate_limit'     => 45,   // requests per minute (ip-api.com free tier)
     ],
@@ -192,7 +194,7 @@ Scheduler (every N minutes)
               (recalculated from page_views for today + yesterday)
 ```
 
-Geolocation (IP → country/city) is resolved via ip-api.com and cached locally. No data is sent to Google or any tracking platform.
+Geolocation (IP → country/city) is resolved via [ip-api.com](https://ip-api.com) and cached locally for 24 hours (free tier limit: 45 req/min). Set `geolocation.enabled: false` to skip all lookups — country/city fields will be `null`, and no IP is sent to any external service.
 
 ---
 

@@ -23,6 +23,10 @@ class TrackPageVisit
     protected function getGeolocationData($ipAddress)
     {
         try {
+            if (!config('statamic-analytics.geolocation.enabled', true)) {
+                return ['country_code' => null, 'country_name' => null, 'city' => null];
+            }
+
             // Skip for localhost/private IPs
             if (in_array($ipAddress, ['127.0.0.1', '::1']) || filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
                 return [
