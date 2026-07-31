@@ -6,9 +6,12 @@ use Illuminate\Console\Command;
 
 class UpdateGeoIpDatabase extends Command
 {
-    protected $signature = 'analytics:update-geoip';
+    protected $signature = 'analytics:update-geoip
+                            {--force : Télécharge même si la base locale est déjà à jour}';
 
-    protected $description = 'Télécharge et installe la base de données MaxMind GeoLite2-City.';
+    protected $description = 'Télécharge GeoLite2-City.mmdb si une version plus récente est disponible.';
+
+    private string $url = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz';
 
     public function handle(): int
     {
@@ -29,34 +32,48 @@ class UpdateGeoIpDatabase extends Command
             'statamic-analytics.geolocation.maxmind.database_path',
             storage_path('app/geoip/GeoLite2-City.mmdb')
         );
-        $destDir = dirname($destPath);
 
+        // Vérifier la date de la release distante avant de télécharger
+        $remoteDate = $this->fetchRemoteLastModified($accountId, $licenseKey);
+
+        if ($remoteDate === null) {
+            $this->error('Impossible de contacter le serveur MaxMind. Vérifiez vos identifiants et votre accès réseau.');
+            return self::FAILURE;
+        }
+
+        if (!$this->option('force') && file_exists($destPath)) {
+            $localDate = new \DateTimeImmutable('@' . filemtime($destPath));
+
+            if ($remoteDate <= $localDate) {
+                $this->info('Base déjà à jour (' . $localDate->format('Y-m-d') . '). Aucun téléchargement nécessaire.');
+                return self::SUCCESS;
+            }
+        }
+
+        $this->info('Nouvelle version disponible (' . $remoteDate->format('Y-m-d') . '). Téléchargement…');
+
+        $destDir = dirname($destPath);
         if (!is_dir($destDir)) {
             mkdir($destDir, 0775, true);
         }
 
-        $url     = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz';
         $tmpFile = sys_get_temp_dir() . '/GeoLite2-City-' . time() . '.tar.gz';
         $tmpDir  = sys_get_temp_dir() . '/GeoLite2-City-extract-' . time();
 
-        $this->info('Téléchargement de GeoLite2-City depuis MaxMind…');
-
-        // file_get_contents ne transmet pas le header Authorization après redirect (302→CDN)
-        // On utilise curl qui suit les redirections nativement.
         $exitCode = null;
         system(
             sprintf(
                 'curl -fsSL -u %s:%s %s -o %s',
                 escapeshellarg($accountId),
                 escapeshellarg($licenseKey),
-                escapeshellarg($url),
+                escapeshellarg($this->url),
                 escapeshellarg($tmpFile)
             ),
             $exitCode
         );
 
         if ($exitCode !== 0 || !file_exists($tmpFile) || filesize($tmpFile) < 1024) {
-            $this->error('Échec du téléchargement. Vérifiez vos identifiants MaxMind.');
+            $this->error('Échec du téléchargement.');
             return self::FAILURE;
         }
 
@@ -67,7 +84,6 @@ class UpdateGeoIpDatabase extends Command
         $phar = new \PharData($tmpFile);
         $phar->extractTo($tmpDir);
 
-        // Trouver le .mmdb dans le sous-dossier GeoLite2-City_YYYYMMDD/
         $mmdbFiles = glob($tmpDir . '/GeoLite2-City_*/GeoLite2-City.mmdb');
 
         if (empty($mmdbFiles)) {
@@ -81,13 +97,41 @@ class UpdateGeoIpDatabase extends Command
 
         $this->cleanup($tmpFile, $tmpDir);
 
-        $this->info("Base de données installée : {$destPath}");
-        $this->line('');
-        $this->line('Pour automatiser la mise à jour hebdomadaire (chaque mardi), ajoutez dans');
-        $this->line('votre App\Console\Kernel ou routes/console.php :');
-        $this->line("  \$schedule->command('analytics:update-geoip')->weekly()->tuesdays();");
+        $this->info('Base de données installée : ' . $destPath);
 
         return self::SUCCESS;
+    }
+
+    protected function fetchRemoteLastModified(string $accountId, string $licenseKey): ?\DateTimeImmutable
+    {
+        $output   = [];
+        $exitCode = null;
+
+        exec(
+            sprintf(
+                'curl -sI -L -u %s:%s %s 2>/dev/null',
+                escapeshellarg($accountId),
+                escapeshellarg($licenseKey),
+                escapeshellarg($this->url)
+            ),
+            $output,
+            $exitCode
+        );
+
+        if ($exitCode !== 0) {
+            return null;
+        }
+
+        foreach ($output as $line) {
+            if (stripos($line, 'Last-Modified:') === 0) {
+                $dateStr = trim(substr($line, strlen('Last-Modified:')));
+                $date = \DateTimeImmutable::createFromFormat(\DateTimeInterface::RFC7231, $dateStr)
+                    ?: \DateTimeImmutable::createFromFormat('D, d M Y H:i:s T', $dateStr);
+                return $date ?: null;
+            }
+        }
+
+        return null;
     }
 
     protected function cleanup(string $tmpFile, string $tmpDir): void
