@@ -1,6 +1,6 @@
 {
   "resources/css/statamic-analytics.css": {
-    "file": "assets/statamic-analytics-X5sk5BJp.css",
+    "file": "assets/statamic-analytics--r3RbQkV.css",
     "src": "resources/css/statamic-analytics.css",
     "isEntry": true,
     "name": "statamic-analytics",
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/js/statamic-analytics.js": {
-    "file": "assets/statamic-analytics-D5jpg3_u.js",
+    "file": "assets/statamic-analytics-BCxfUvRm.js",
     "name": "statamic-analytics",
     "src": "resources/js/statamic-analytics.js",
     "isEntry": true

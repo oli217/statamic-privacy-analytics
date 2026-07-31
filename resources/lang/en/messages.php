@@ -28,6 +28,7 @@ return [
     'clearing'              => 'Clearing...',
     'clear_geo_cache'       => 'Clear Geo Cache',
     'current_configuration' => 'Current Configuration',
+    'geo_provider'          => 'Provider:',
     'cache_duration'        => 'Cache Duration:',
     'rate_limit'            => 'Rate Limit:',
     'processing'            => 'Processing:',

@@ -19,6 +19,7 @@ class AnalyticsDashboardController
                 'cacheDuration'      => config('statamic-analytics.geolocation.cache_duration', 1440),
                 'rateLimit'          => config('statamic-analytics.geolocation.ip_api.rate_limit', config('statamic-analytics.geolocation.rate_limit', 45)),
                 'processingFrequency'=> config('statamic-analytics.processing.frequency', 15),
+                'geoProvider'        => config('statamic-analytics.geolocation.provider') ?? (config('statamic-analytics.geolocation.enabled', true) ? 'ip-api' : 'disabled'),
                 'routes' => [
                     'data'       => cp_route('statamic-analytics.data'),
                     'export'     => cp_route('statamic-analytics.export'),

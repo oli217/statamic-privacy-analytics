@@ -28,6 +28,7 @@ return [
     'clearing'              => 'Nettoyage…',
     'clear_geo_cache'       => 'Vider le cache géo',
     'current_configuration' => 'Configuration actuelle',
+    'geo_provider'          => 'Fournisseur :',
     'cache_duration'        => 'Durée du cache :',
     'rate_limit'            => 'Limite de requêtes :',
     'processing'            => 'Traitement :',

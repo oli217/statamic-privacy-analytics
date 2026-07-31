@@ -71,10 +71,14 @@
                     <h4 class="ea-text-lg ea-font-semibold">{{ t('current_configuration') }}</h4>
                     <div class="ea-space-y-2">
                         <div class="ea-flex ea-justify-between">
+                            <span class="ea-text-secondary">{{ t('geo_provider') }}</span>
+                            <span class="ea-font-medium">{{ config.geoProvider }}</span>
+                        </div>
+                        <div class="ea-flex ea-justify-between">
                             <span class="ea-text-secondary">{{ t('cache_duration') }}</span>
                             <span class="ea-font-medium">{{ config.cacheDuration }} {{ t('minutes') }}</span>
                         </div>
-                        <div class="ea-flex ea-justify-between">
+                        <div v-if="config.geoProvider === 'ip-api'" class="ea-flex ea-justify-between">
                             <span class="ea-text-secondary">{{ t('rate_limit') }}</span>
                             <span class="ea-font-medium">{{ config.rateLimit }} {{ t('requests_per_minute') }}</span>
                         </div>
