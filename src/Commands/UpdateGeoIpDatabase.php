@@ -41,15 +41,21 @@ class UpdateGeoIpDatabase extends Command
 
         $this->info('Téléchargement de GeoLite2-City depuis MaxMind…');
 
-        $context = stream_context_create([
-            'http' => [
-                'header' => 'Authorization: Basic ' . base64_encode("{$accountId}:{$licenseKey}"),
-            ],
-        ]);
+        // file_get_contents ne transmet pas le header Authorization après redirect (302→CDN)
+        // On utilise curl qui suit les redirections nativement.
+        $exitCode = null;
+        system(
+            sprintf(
+                'curl -fsSL -u %s:%s %s -o %s',
+                escapeshellarg($accountId),
+                escapeshellarg($licenseKey),
+                escapeshellarg($url),
+                escapeshellarg($tmpFile)
+            ),
+            $exitCode
+        );
 
-        $bytes = file_put_contents($tmpFile, file_get_contents($url, false, $context));
-
-        if (!$bytes) {
+        if ($exitCode !== 0 || !file_exists($tmpFile) || filesize($tmpFile) < 1024) {
             $this->error('Échec du téléchargement. Vérifiez vos identifiants MaxMind.');
             return self::FAILURE;
         }
