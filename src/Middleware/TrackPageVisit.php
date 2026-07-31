@@ -4,12 +4,12 @@ namespace Oliweb\StatamicAnalytics\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Jenssegers\Agent\Agent;
 use Carbon\Carbon;
+use Oliweb\StatamicAnalytics\Services\GeolocationService;
 
 class TrackPageVisit
 {
@@ -20,140 +20,14 @@ class TrackPageVisit
         $this->agent = new Agent();
     }
 
-    protected function getGeolocationData($ipAddress)
+    public static function getGeolocationStats(): array
     {
-        try {
-            if (!config('statamic-analytics.geolocation.enabled', true)) {
-                return ['country_code' => null, 'country_name' => null, 'city' => null];
-            }
-
-            // Skip for localhost/private IPs
-            if (in_array($ipAddress, ['127.0.0.1', '::1']) || filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-                return [
-                    'country_code' => null,
-                    'country_name' => null,
-                    'city' => null
-                ];
-            }
-
-            // Try to get from cache first
-            $cacheKey = 'statamic_analytics_geo_' . $ipAddress;
-            $cacheDuration = config('statamic-analytics.geolocation.cache_duration', 60 * 24);
-            $rateLimitKey = 'statamic_analytics_geo_ratelimit';
-            $rateLimit = config('statamic-analytics.geolocation.rate_limit', 45);
-
-            // Check rate limit
-            $currentMinute = now()->format('Y-m-d H:i');
-            $requestCount = Cache::get($rateLimitKey . '_' . $currentMinute, 0);
-
-            if ($requestCount >= $rateLimit) {
-                Log::warning('Enhanced Analytics: IP Geolocation rate limit reached. Using fallback data.');
-                return $this->getFallbackGeolocationData($ipAddress);
-            }
-
-            return Cache::remember($cacheKey, $cacheDuration * 60, function () use ($ipAddress, $rateLimitKey, $currentMinute, $requestCount) {
-                try {
-                    // Increment rate limit counter
-                    Cache::put($rateLimitKey . '_' . $currentMinute, $requestCount + 1, 60);
-
-                    $response = file_get_contents("http://ip-api.com/json/{$ipAddress}?fields=status,message,countryCode,country,city");
-                    $data = json_decode($response, true);
-
-                    if ($data && isset($data['status']) && $data['status'] === 'success') {
-                        $this->trackGeolocationLookup($ipAddress, true);
-                        return [
-                            'country_code' => $data['countryCode'] ?? null,
-                            'country_name' => $data['country'] ?? null,
-                            'city' => $data['city'] ?? null
-                        ];
-                    }
-
-                    Log::warning('Enhanced Analytics: IP-API lookup failed', [
-                        'status' => $data['status'] ?? 'unknown',
-                        'message' => $data['message'] ?? 'No message'
-                    ]);
-                    $this->trackGeolocationLookup($ipAddress, false);
-                    return $this->getFallbackGeolocationData($ipAddress);
-                } catch (\Exception $e) {
-                    Log::error('Enhanced Analytics: Geolocation API error', [
-                        'error' => $e->getMessage(),
-                    ]);
-                    $this->trackGeolocationLookup($ipAddress, false);
-                    return $this->getFallbackGeolocationData($ipAddress);
-                }
-            });
-        } catch (\Exception $e) {
-            Log::error('Enhanced Analytics: Geolocation error', [
-                'error' => $e->getMessage(),
-            ]);
-            return $this->getFallbackGeolocationData($ipAddress);
-        }
+        return GeolocationService::getStats();
     }
 
-    protected function getFallbackGeolocationData($ipAddress)
+    public static function clearGeolocationCache(): void
     {
-        $historicalKey = 'statamic_analytics_historical_geo';
-        $historicalData = Cache::get($historicalKey, []);
-
-        return $historicalData[$ipAddress] ?? [
-            'country_code' => null,
-            'country_name' => null,
-            'city' => null
-        ];
-    }
-
-    protected function trackGeolocationLookup($ipAddress, $success)
-    {
-        $statsKey = 'statamic_analytics_geolocation_stats';
-        $stats = Cache::get($statsKey, [
-            'total_lookups' => 0,
-            'successful_lookups' => 0,
-            'failed_lookups' => 0,
-            'unique_ips' => [],
-            'last_lookup' => null,
-        ]);
-
-        $stats['total_lookups']++;
-        if ($success) {
-            $stats['successful_lookups']++;
-        } else {
-            $stats['failed_lookups']++;
-        }
-
-        if (!in_array($ipAddress, $stats['unique_ips'])) {
-            $stats['unique_ips'][] = $ipAddress;
-        }
-
-        $stats['last_lookup'] = now()->toDateTimeString();
-
-        Cache::put($statsKey, $stats, now()->addDays(30));
-    }
-
-    public static function getGeolocationStats()
-    {
-        $statsKey = 'statamic_analytics_geolocation_stats';
-        return Cache::get($statsKey, [
-            'total_lookups' => 0,
-            'successful_lookups' => 0,
-            'failed_lookups' => 0,
-            'unique_ips' => [],
-            'last_lookup' => null,
-        ]);
-    }
-
-    public static function clearGeolocationCache()
-    {
-        $pattern = 'statamic_analytics_geo_*';
-        $keys = Cache::get('statamic_analytics_cache_keys', []);
-
-        foreach ($keys as $key) {
-            if (Str::is($pattern, $key)) {
-                Cache::forget($key);
-            }
-        }
-
-        Cache::forget('statamic_analytics_geolocation_stats');
-        Cache::forget('statamic_analytics_cache_keys');
+        GeolocationService::clearCache();
     }
 
     public function handle(Request $request, Closure $next)
@@ -192,8 +66,8 @@ class TrackPageVisit
                 $pageUrl = $request->path();
                 $ipAddress = $request->ip();
 
-                // Get geographic data (cached via Cache facade)
-                $geoData = $this->getGeolocationData($ipAddress);
+                // Get geographic data
+                $geoData = (new GeolocationService())->lookup($ipAddress);
 
                 // Track page uniqueness per session
                 $visitedPages = $request->session()->get('visited_pages', []);

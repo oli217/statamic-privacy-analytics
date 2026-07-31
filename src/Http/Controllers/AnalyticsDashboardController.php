@@ -17,7 +17,7 @@ class AnalyticsDashboardController
             'config' => [
                 'refreshInterval'    => config('statamic-analytics.dashboard.refresh_interval', 300),
                 'cacheDuration'      => config('statamic-analytics.geolocation.cache_duration', 1440),
-                'rateLimit'          => config('statamic-analytics.geolocation.rate_limit', 45),
+                'rateLimit'          => config('statamic-analytics.geolocation.ip_api.rate_limit', config('statamic-analytics.geolocation.rate_limit', 45)),
                 'processingFrequency'=> config('statamic-analytics.processing.frequency', 15),
                 'routes' => [
                     'data'       => cp_route('statamic-analytics.data'),

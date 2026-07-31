@@ -28,14 +28,30 @@ return [
     | IP Geolocation Settings
     |--------------------------------------------------------------------------
     |
-    | Configure settings for IP geolocation service.
-    | The free tier of ip-api.com has a rate limit of 45 requests per minute.
+    | provider : 'disabled' | 'ip-api' | 'maxmind'
+    |
+    | ip-api   : Appels HTTP vers ip-api.com (gratuit, 45 req/min).
+    | maxmind  : Base locale GeoLite2, aucun appel externe. Nécessite
+    |            un compte gratuit MaxMind et la commande :
+    |            php artisan analytics:update-geoip
+    |
+    | Rétrocompat : si 'provider' est absent et que 'enabled' est défini,
+    |   enabled=true → 'ip-api', enabled=false → 'disabled'.
     |
     */
     'geolocation' => [
-        'enabled' => true, // set to false to disable ip-api.com lookups entirely
-        'cache_duration' => 60 * 24, // Cache IP geolocation data for 24 hours
-        'rate_limit' => 45, // Requests per minute
+        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'ip-api'),
+        'cache_duration' => 60 * 24, // minutes, soit 24 h
+
+        'ip_api' => [
+            'rate_limit' => 45, // Requêtes par minute (tier gratuit ip-api.com)
+        ],
+
+        'maxmind' => [
+            'database_path' => storage_path('app/geoip/GeoLite2-City.mmdb'),
+            'account_id'    => env('MAXMIND_ACCOUNT_ID'),
+            'license_key'   => env('MAXMIND_LICENSE_KEY'),
+        ],
     ],
 
     /*

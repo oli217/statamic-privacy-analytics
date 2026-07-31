@@ -9,7 +9,7 @@ A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-p
 - **Zero external tracking dependencies** — no Google Analytics, no Matomo cloud, no Plausible cloud
 - **Direct DB writes** — every page view is recorded instantly, no processing queue needed for real-time data
 - **GDPR-ready** — built-in consent banner with granular controls (optional)
-- **Self-hosted geolocation** — IP → country/city via [ip-api.com](https://ip-api.com) with local caching, no Google Maps
+- **Geolocation** — IP → country/city via [ip-api.com](https://ip-api.com) (HTTP, free tier) or locally with [MaxMind GeoLite2](https://www.maxmind.com/en/geolite2/signup) (no external calls)
 
 ---
 
@@ -67,7 +67,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Configurable excluded paths and IPs
 - Optional authenticated user tracking
 - Geolocation optional per-visitor via consent settings
-- Geolocation globally disableable (`geolocation.enabled: false`) — no call to ip-api.com, no third-party data transfer
+- Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
 
 ---
 
@@ -106,9 +106,18 @@ The addon starts tracking immediately. Access the dashboard via **Control Panel 
 ```php
 return [
     'geolocation' => [
-        'enabled'        => true, // set to false to disable ip-api.com entirely (no third-party transfer)
+        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'ip-api'), // 'disabled' | 'ip-api' | 'maxmind'
         'cache_duration' => 1440, // minutes (24h)
-        'rate_limit'     => 45,   // requests per minute (ip-api.com free tier)
+
+        'ip_api' => [
+            'rate_limit' => 45, // requests per minute (ip-api.com free tier)
+        ],
+
+        'maxmind' => [
+            'database_path' => storage_path('app/geoip/GeoLite2-City.mmdb'),
+            'account_id'    => env('MAXMIND_ACCOUNT_ID'),
+            'license_key'   => env('MAXMIND_LICENSE_KEY'),
+        ],
     ],
 
     'processing' => [
@@ -138,6 +147,44 @@ return [
         ],
     ],
 ];
+```
+
+---
+
+## Geolocation
+
+### Providers
+
+| Provider | External call | Data | Requirements |
+|---|---|---|---|
+| `ip-api` *(default)* | Yes (ip-api.com) | Country + city | None |
+| `maxmind` | No | Country + city | Free MaxMind account |
+| `disabled` | No | — | — |
+
+Set via `.env`:
+```
+ANALYTICS_GEO_PROVIDER=maxmind
+```
+
+### MaxMind GeoLite2 (recommended for full privacy)
+
+1. Create a free account at [maxmind.com/en/geolite2/signup](https://www.maxmind.com/en/geolite2/signup)
+2. Generate a license key in **My Account → Manage License Keys**
+3. Add to `.env`:
+   ```
+   ANALYTICS_GEO_PROVIDER=maxmind
+   MAXMIND_ACCOUNT_ID=<your_account_id>
+   MAXMIND_LICENSE_KEY=<your_license_key>
+   ```
+4. Download the database:
+   ```bash
+   php artisan analytics:update-geoip
+   ```
+
+MaxMind updates GeoLite2 every Tuesday. To automate:
+```php
+// App\Console\Kernel or routes/console.php
+$schedule->command('analytics:update-geoip')->weekly()->tuesdays();
 ```
 
 ---
@@ -194,7 +241,7 @@ Scheduler (every N minutes)
               (recalculated from page_views for today + yesterday)
 ```
 
-Geolocation (IP → country/city) is resolved via [ip-api.com](https://ip-api.com) and cached locally for 24 hours (free tier limit: 45 req/min). Set `geolocation.enabled: false` to skip all lookups — country/city fields will be `null`, and no IP is sent to any external service.
+Geolocation (IP → country/city) is resolved by the configured provider — ip-api.com (HTTP, 45 req/min free tier) or MaxMind GeoLite2 (local `.mmdb` file, no external calls). Results are cached for 24 hours. With `provider: disabled`, country/city fields stay `null` and no IP leaves the server.
 
 ---
 

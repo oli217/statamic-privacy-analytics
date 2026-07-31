@@ -11,6 +11,7 @@ class ServiceProvider extends AddonServiceProvider
 {
     protected $commands = [
         Commands\ProcessAnalytics::class,
+        Commands\UpdateGeoIpDatabase::class,
     ];
 
     protected $routes = [
@@ -117,6 +118,18 @@ class ServiceProvider extends AddonServiceProvider
 
                 if (!File::exists($path)) {
                     File::makeDirectory($path, $permissions, true);
+                }
+            }
+
+            // Créer le dossier geoip si le provider MaxMind est actif
+            if (config('statamic-analytics.geolocation.provider') === 'maxmind') {
+                $geoipDir = dirname(config(
+                    'statamic-analytics.geolocation.maxmind.database_path',
+                    storage_path('app/geoip/GeoLite2-City.mmdb')
+                ));
+
+                if (!File::exists($geoipDir)) {
+                    File::makeDirectory($geoipDir, 0775, true);
                 }
             }
         } catch (\Exception $e) {
