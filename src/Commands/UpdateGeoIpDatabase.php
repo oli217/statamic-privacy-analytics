@@ -109,15 +109,28 @@ class UpdateGeoIpDatabase extends Command
         // Écriture atomique : copie sur le même filesystem que $destPath,
         // puis rename() atomique pour éviter toute lecture partielle concurrente.
         $stagingPath = $destPath . '.tmp';
-        copy($mmdbFiles[0], $stagingPath);
+
+        if (!copy($mmdbFiles[0], $stagingPath)) {
+            $this->error('Échec de la copie vers le fichier temporaire.');
+            $this->cleanup($tmpFile, $tmpDir);
+            return self::FAILURE;
+        }
+
         chmod($stagingPath, config('statamic-analytics.cache.file.permissions.file', 0644));
 
         if (!rename($stagingPath, $destPath)) {
             // rename() cross-device (storage_path sur montage réseau) — fallback non atomique.
             // Une fenêtre de lecture partielle est théoriquement possible pendant le remplacement.
-            $this->error('rename() a échoué (cross-device ?). Fallback copy() non atomique appliqué.');
-            copy($stagingPath, $destPath);
-            unlink($stagingPath);
+            $this->warn('rename() a échoué (cross-device ?). Fallback copy() non atomique appliqué.');
+
+            if (!copy($stagingPath, $destPath)) {
+                $this->error('Échec du fallback copy() vers ' . $destPath);
+                @unlink($stagingPath);
+                $this->cleanup($tmpFile, $tmpDir);
+                return self::FAILURE;
+            }
+
+            @unlink($stagingPath);
         }
 
         $this->cleanup($tmpFile, $tmpDir);
@@ -154,7 +167,7 @@ class UpdateGeoIpDatabase extends Command
 
     protected function verifyChecksum(string $tmpFile, string $accountId, string $licenseKey): bool
     {
-        $checksumUrl = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz.sha256';
+        $checksumUrl = $this->url . '.sha256';
 
         try {
             $response = Http::withBasicAuth($accountId, $licenseKey)
