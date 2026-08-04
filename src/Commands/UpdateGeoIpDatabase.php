@@ -106,8 +106,19 @@ class UpdateGeoIpDatabase extends Command
             return self::FAILURE;
         }
 
-        copy($mmdbFiles[0], $destPath);
-        chmod($destPath, config('statamic-analytics.cache.file.permissions.file', 0664));
+        // Écriture atomique : copie sur le même filesystem que $destPath,
+        // puis rename() atomique pour éviter toute lecture partielle concurrente.
+        $stagingPath = $destPath . '.tmp';
+        copy($mmdbFiles[0], $stagingPath);
+        chmod($stagingPath, config('statamic-analytics.cache.file.permissions.file', 0644));
+
+        if (!rename($stagingPath, $destPath)) {
+            // rename() cross-device (storage_path sur montage réseau) — fallback non atomique.
+            // Une fenêtre de lecture partielle est théoriquement possible pendant le remplacement.
+            $this->error('rename() a échoué (cross-device ?). Fallback copy() non atomique appliqué.');
+            copy($stagingPath, $destPath);
+            unlink($stagingPath);
+        }
 
         $this->cleanup($tmpFile, $tmpDir);
 
