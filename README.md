@@ -117,7 +117,7 @@ return [
     ],
 
     'geolocation' => [
-        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'ip-api'), // 'disabled' | 'ip-api' | 'maxmind'
+        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'maxmind'), // 'disabled' | 'ip-api' | 'maxmind'
         'cache_duration' => 1440, // minutes (24h)
 
         'ip_api' => [
@@ -176,14 +176,19 @@ return [
 
 | Provider | External call | Data | Requirements |
 |---|---|---|---|
-| `ip-api` *(default)* | Yes (ip-api.com) | Country + city | None |
-| `maxmind` | No | Country + city | Free MaxMind account |
+| `ip-api` | Yes (ip-api.com) | Country + city | None |
+| `maxmind` *(default since 2.0)* | No | Country + city | Free MaxMind account + credentials |
 | `disabled` | No | — | — |
 
 Set via `.env`:
 ```
-ANALYTICS_GEO_PROVIDER=maxmind
+ANALYTICS_GEO_PROVIDER=ip-api      # external HTTP, no credentials needed
+# ANALYTICS_GEO_PROVIDER=maxmind   # default — local database, no external calls
+# ANALYTICS_GEO_PROVIDER=disabled  # disables geolocation entirely
 ```
+
+> **If `maxmind` is active but credentials are not configured**, a warning banner appears in the Control Panel dashboard and geolocation will silently return empty results. Geographic widgets (Top countries, Top cities) are hidden entirely when provider is `disabled`.
+
 
 ### MaxMind GeoLite2 (recommended for full privacy)
 

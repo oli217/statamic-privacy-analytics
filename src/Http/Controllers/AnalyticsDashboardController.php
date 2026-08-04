@@ -13,13 +13,21 @@ class AnalyticsDashboardController
 {
     public function index()
     {
+        $resolvedProvider = config('statamic-analytics.geolocation.provider')
+            ?? (config('statamic-analytics.geolocation.enabled', true) ? 'ip-api' : 'disabled');
+
+        $geoWarning = $resolvedProvider === 'maxmind'
+            && (empty(config('statamic-analytics.geolocation.maxmind.account_id'))
+                || empty(config('statamic-analytics.geolocation.maxmind.license_key')));
+
         return Inertia::render('StatamicAnalytics/Dashboard', [
             'config' => [
                 'refreshInterval'    => config('statamic-analytics.dashboard.refresh_interval', 300),
                 'cacheDuration'      => config('statamic-analytics.geolocation.cache_duration', 1440),
                 'rateLimit'          => config('statamic-analytics.geolocation.ip_api.rate_limit', config('statamic-analytics.geolocation.rate_limit', 45)),
                 'processingFrequency'=> config('statamic-analytics.processing.frequency', 15),
-                'geoProvider'        => config('statamic-analytics.geolocation.provider') ?? (config('statamic-analytics.geolocation.enabled', true) ? 'ip-api' : 'disabled'),
+                'geoProvider'        => $resolvedProvider,
+                'geoWarning'         => $geoWarning,
                 'routes' => [
                     'data'       => cp_route('statamic-analytics.data'),
                     'export'     => cp_route('statamic-analytics.export'),

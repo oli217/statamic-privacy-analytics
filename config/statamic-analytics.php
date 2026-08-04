@@ -40,7 +40,7 @@ return [
     |
     */
     'geolocation' => [
-        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'ip-api'),
+        'provider'       => env('ANALYTICS_GEO_PROVIDER', 'maxmind'),
         'cache_duration' => 60 * 24, // minutes, soit 24 h
 
         'ip_api' => [

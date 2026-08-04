@@ -98,7 +98,11 @@ class GeolocationService
         );
 
         if (!file_exists($dbPath)) {
-            Log::warning('StatamicAnalytics: GeoLite2 database not found.', ['path' => $dbPath]);
+            // Throttle : au plus un log par heure pour éviter le flood sur trafic soutenu
+            Cache::remember('statamic-analytics:geoip-missing-warning', 3600, function () use ($dbPath) {
+                Log::warning('StatamicAnalytics: GeoLite2 database not found.', ['path' => $dbPath]);
+                return true;
+            });
             return $this->emptyResult();
         }
 

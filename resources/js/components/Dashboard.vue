@@ -95,6 +95,24 @@
             </div>
         </div>
 
+        <!-- MaxMind credentials warning -->
+        <div v-if="config.geoWarning" class="ea-card" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
+            <p class="ea-font-semibold" style="color: #92400e;">⚠ Géolocalisation MaxMind non configurée</p>
+            <p class="ea-text-secondary" style="margin-top: 0.5rem;">
+                Le provider <code>maxmind</code> est actif mais les identifiants
+                <code>MAXMIND_ACCOUNT_ID</code> / <code>MAXMIND_LICENSE_KEY</code> sont absents.
+                Les widgets pays et villes resteront vides.
+                <a href="https://www.maxmind.com/en/geolite2/signup" target="_blank" style="color: #2563eb;">
+                    Créer un compte gratuit MaxMind
+                </a>.
+            </p>
+            <p class="ea-text-secondary" style="margin-top: 0.25rem;">
+                Pour désactiver proprement la géolocalisation et supprimer ce message,
+                définissez <code>ANALYTICS_GEO_PROVIDER=disabled</code> dans votre <code>.env</code>
+                (les widgets géographiques seront alors masqués).
+            </p>
+        </div>
+
         <!-- Quick Stats Overview -->
         <div class="ea-grid ea-grid-cols-4">
             <div class="ea-card">
@@ -164,7 +182,7 @@
 
         <!-- Geographic & Technical Insights -->
         <div class="ea-grid ea-grid-cols-1">
-            <div class="ea-card">
+            <div v-if="!geoDisabled" class="ea-card">
                 <h3 class="ea-font-bold">{{ t('top_countries') }}</h3>
                 <div class="ea-chart-wrapper">
                     <canvas ref="countryChartEl"></canvas>
@@ -203,7 +221,7 @@
         </div>
 
         <!-- Cities -->
-        <CityWidget :data="cityStats" :t="t" />
+        <CityWidget v-if="!geoDisabled" :data="cityStats" :t="t" />
 
         <!-- Referrer sources -->
         <ReferrerWidget :data="referrerStats" :t="t" />
@@ -378,6 +396,8 @@ let realtimeTimer = null
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
+const geoDisabled = computed(() => props.config.geoProvider === 'disabled')
+
 const geoSuccessRate = computed(() => {
     if (!geoStats.total_lookups) return '0%'
     return ((geoStats.successful_lookups / geoStats.total_lookups) * 100).toFixed(1) + '%'
@@ -447,14 +467,16 @@ function initCharts() {
         options: { responsive: true, maintainAspectRatio: false },
     })
 
-    countryChart = new Chart(countryChartEl.value, {
-        type: 'bar',
-        data: {
-            labels: [],
-            datasets: [{ label: t('visits'), data: [], backgroundColor: 'rgb(59, 130, 246)' }],
-        },
-        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' },
-    })
+    if (countryChartEl.value) {
+        countryChart = new Chart(countryChartEl.value, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{ label: t('visits'), data: [], backgroundColor: 'rgb(59, 130, 246)' }],
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' },
+        })
+    }
 
     browserChart = new Chart(browserChartEl.value, {
         type: 'doughnut',
@@ -549,7 +571,7 @@ function updateState(data) {
         deviceChart.data.datasets[0].data    = data.device_stats.map(i => i.total)
         deviceChart.update()
     }
-    if (data.country_stats) {
+    if (data.country_stats && countryChart) {
         countryChart.data.labels             = data.country_stats.map(i => i.dimension_value)
         countryChart.data.datasets[0].data   = data.country_stats.map(i => i.total)
         countryChart.update()
