@@ -105,6 +105,17 @@ The addon starts tracking immediately. Access the dashboard via **Control Panel 
 
 ```php
 return [
+    'cache' => [
+        'driver' => env('STATAMIC_ANALYTICS_CACHE_DRIVER', 'file'),
+        'file' => [
+            'path' => storage_path('app/statamic-analytics'),
+            'permissions' => [
+                'file'      => 0644,
+                'directory' => 0755,
+            ],
+        ],
+    ],
+
     'geolocation' => [
         'provider'       => env('ANALYTICS_GEO_PROVIDER', 'ip-api'), // 'disabled' | 'ip-api' | 'maxmind'
         'cache_duration' => 1440, // minutes (24h)
@@ -121,8 +132,8 @@ return [
     ],
 
     'processing' => [
-        'frequency'    => 15, // minutes — aggregate recalculation frequency
-        'lock_timeout' => 60,
+        'frequency'  => 15,   // minutes — aggregate recalculation frequency
+        'chunk_size' => 1000,
     ],
 
     'dashboard' => [
@@ -146,8 +157,16 @@ return [
             ],
         ],
     ],
+
+    'enable_debugging' => false,
 ];
 ```
+
+### Notes de configuration
+
+**`enable_debugging`** — Active les logs détaillés du middleware de tracking. À ne laisser à `true` qu'en développement.
+
+**Rétrocompatibilité `geolocation.provider`** — Si la clé `provider` est absente du fichier publié (config générée avant cette version), l'addon se rabat sur l'ancienne clé booléenne `enabled` : `enabled=true` → `ip-api`, `enabled=false` → `disabled`. Migrer explicitement vers `provider` lors du prochain `vendor:publish --force`.
 
 ---
 
@@ -181,11 +200,14 @@ ANALYTICS_GEO_PROVIDER=maxmind
    php artisan analytics:update-geoip
    ```
 
-MaxMind updates GeoLite2 every Tuesday. To automate:
+> **Important :** `analytics:update-geoip` n'est **pas** planifié automatiquement par l'addon (contrairement à `analytics:process`). Vous devez l'ajouter vous-même dans `routes/console.php` :
+
 ```php
-// App\Console\Kernel or routes/console.php
-$schedule->command('analytics:update-geoip')->weekly()->tuesdays();
+// routes/console.php
+Schedule::command('analytics:update-geoip')->weekly()->tuesdays();
 ```
+
+MaxMind met à jour GeoLite2 chaque mardi — un déclenchement hebdomadaire le mardi est recommandé.
 
 ---
 

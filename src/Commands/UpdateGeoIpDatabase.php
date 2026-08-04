@@ -3,6 +3,8 @@
 namespace Oliweb\StatamicAnalytics\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 
 class UpdateGeoIpDatabase extends Command
 {
@@ -33,7 +35,6 @@ class UpdateGeoIpDatabase extends Command
             storage_path('app/geoip/GeoLite2-City.mmdb')
         );
 
-        // Vérifier la date de la release distante avant de télécharger
         $remoteDate = $this->fetchRemoteLastModified($accountId, $licenseKey);
 
         if ($remoteDate === null) {
@@ -57,23 +58,30 @@ class UpdateGeoIpDatabase extends Command
             mkdir($destDir, 0775, true);
         }
 
-        $tmpFile = sys_get_temp_dir() . '/GeoLite2-City-' . time() . '.tar.gz';
-        $tmpDir  = sys_get_temp_dir() . '/GeoLite2-City-extract-' . time();
+        $uid     = uniqid('geolite2_', true);
+        $tmpFile = sys_get_temp_dir() . '/' . $uid . '.tar.gz';
+        $tmpDir  = sys_get_temp_dir() . '/' . $uid . '_extract';
 
-        $exitCode = null;
-        system(
-            sprintf(
-                'curl -fsSL -u %s:%s %s -o %s',
-                escapeshellarg($accountId),
-                escapeshellarg($licenseKey),
-                escapeshellarg($this->url),
-                escapeshellarg($tmpFile)
-            ),
-            $exitCode
-        );
+        try {
+            $response = Http::withBasicAuth($accountId, $licenseKey)
+                ->timeout(120)
+                ->withOptions(['sink' => $tmpFile])
+                ->get($this->url);
+        } catch (ConnectionException $e) {
+            $this->error('Erreur réseau lors du téléchargement : ' . $e->getMessage());
+            $this->cleanup($tmpFile, $tmpDir);
+            return self::FAILURE;
+        }
 
-        if ($exitCode !== 0 || !file_exists($tmpFile) || filesize($tmpFile) < 1024) {
-            $this->error('Échec du téléchargement.');
+        if (!$response->successful() || !file_exists($tmpFile) || filesize($tmpFile) < 1024) {
+            $this->error('Échec du téléchargement (HTTP ' . $response->status() . ').');
+            $this->cleanup($tmpFile, $tmpDir);
+            return self::FAILURE;
+        }
+
+        if (!$this->verifyChecksum($tmpFile, $accountId, $licenseKey)) {
+            $this->error('La vérification d\'intégrité SHA-256 a échoué. Archive abandonnée.');
+            $this->cleanup($tmpFile, $tmpDir);
             return self::FAILURE;
         }
 
@@ -81,8 +89,14 @@ class UpdateGeoIpDatabase extends Command
 
         mkdir($tmpDir, 0775, true);
 
-        $phar = new \PharData($tmpFile);
-        $phar->extractTo($tmpDir);
+        try {
+            $phar = new \PharData($tmpFile);
+            $phar->extractTo($tmpDir);
+        } catch (\PharException | \Exception $e) {
+            $this->error('Échec de l\'extraction : ' . $e->getMessage());
+            $this->cleanup($tmpFile, $tmpDir);
+            return self::FAILURE;
+        }
 
         $mmdbFiles = glob($tmpDir . '/GeoLite2-City_*/GeoLite2-City.mmdb');
 
@@ -93,7 +107,7 @@ class UpdateGeoIpDatabase extends Command
         }
 
         copy($mmdbFiles[0], $destPath);
-        chmod($destPath, 0664);
+        chmod($destPath, config('statamic-analytics.cache.file.permissions.file', 0664));
 
         $this->cleanup($tmpFile, $tmpDir);
 
@@ -104,34 +118,50 @@ class UpdateGeoIpDatabase extends Command
 
     protected function fetchRemoteLastModified(string $accountId, string $licenseKey): ?\DateTimeImmutable
     {
-        $output   = [];
-        $exitCode = null;
-
-        exec(
-            sprintf(
-                'curl -sI -L -u %s:%s %s 2>/dev/null',
-                escapeshellarg($accountId),
-                escapeshellarg($licenseKey),
-                escapeshellarg($this->url)
-            ),
-            $output,
-            $exitCode
-        );
-
-        if ($exitCode !== 0) {
+        try {
+            $response = Http::withBasicAuth($accountId, $licenseKey)
+                ->timeout(15)
+                ->head($this->url);
+        } catch (ConnectionException $e) {
             return null;
         }
 
-        foreach ($output as $line) {
-            if (stripos($line, 'Last-Modified:') === 0) {
-                $dateStr = trim(substr($line, strlen('Last-Modified:')));
-                $date = \DateTimeImmutable::createFromFormat(\DateTimeInterface::RFC7231, $dateStr)
-                    ?: \DateTimeImmutable::createFromFormat('D, d M Y H:i:s T', $dateStr);
-                return $date ?: null;
-            }
+        if (!$response->successful()) {
+            return null;
         }
 
-        return null;
+        $headerValue = $response->header('Last-Modified');
+
+        if (!$headerValue) {
+            return null;
+        }
+
+        return \DateTimeImmutable::createFromFormat(\DateTimeInterface::RFC7231, $headerValue)
+            ?: \DateTimeImmutable::createFromFormat('D, d M Y H:i:s T', $headerValue)
+            ?: null;
+    }
+
+    protected function verifyChecksum(string $tmpFile, string $accountId, string $licenseKey): bool
+    {
+        $checksumUrl = 'https://download.maxmind.com/geoip/databases/GeoLite2-City/download?suffix=tar.gz.sha256';
+
+        try {
+            $response = Http::withBasicAuth($accountId, $licenseKey)
+                ->timeout(15)
+                ->get($checksumUrl);
+        } catch (ConnectionException $e) {
+            return false;
+        }
+
+        if (!$response->successful()) {
+            return false;
+        }
+
+        // Format MaxMind : "<hash>  <filename>\n"
+        $remoteHash = strtok(trim($response->body()), ' ');
+        $localHash  = hash_file('sha256', $tmpFile);
+
+        return hash_equals($remoteHash, $localHash);
     }
 
     protected function cleanup(string $tmpFile, string $tmpDir): void
