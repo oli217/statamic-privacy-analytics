@@ -295,7 +295,7 @@ class CacheManager
 
             foreach (File::files($path) as $file) {
                 $lastModified = Carbon::createFromTimestamp($file->getMTime());
-                if ($now->diffInSeconds($lastModified) > $ttl) {
+                if ($now->diffInSeconds($lastModified, true) > $ttl) {
                     File::delete($file->getPathname());
                 }
             }

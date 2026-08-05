@@ -53,7 +53,7 @@ class AnalyticsDashboardController
             }
         }
 
-        $periodLength = $startDate->diffInDays($endDate);
+        $periodLength = $startDate->diffInDays($endDate, true);
         $previousStartDate = $startDate->copy()->subDays($periodLength);
         $previousEndDate = $startDate->copy()->subDay();
 
@@ -197,7 +197,7 @@ class AnalyticsDashboardController
                 for ($i = 0; $i < count($visits) - 1; $i++) {
                     $currentVisit = Carbon::parse($visits[$i]->visited_at);
                     $nextVisit = Carbon::parse($visits[$i + 1]->visited_at);
-                    $timeDiff = $nextVisit->diffInSeconds($currentVisit);
+                    $timeDiff = $nextVisit->diffInSeconds($currentVisit, true);
                     if ($timeDiff < 3600) {
                         $totalTime += $timeDiff;
                         $timeCount++;
@@ -278,7 +278,7 @@ class AnalyticsDashboardController
             if ($sessionVisits->count() > 1) {
                 $firstVisit = Carbon::parse($sessionVisits->first()->visited_at);
                 $lastVisit = Carbon::parse($sessionVisits->last()->visited_at);
-                $totalTime += $firstVisit->diffInSeconds($lastVisit);
+                $totalTime += $firstVisit->diffInSeconds($lastVisit, true);
                 $sessionCount++;
             }
         }
@@ -555,7 +555,7 @@ class AnalyticsDashboardController
                 for ($i = 0; $i < count($orderedVisits) - 1; $i++) {
                     $currentVisit = Carbon::parse($orderedVisits[$i]->visited_at);
                     $nextVisit = Carbon::parse($orderedVisits[$i + 1]->visited_at);
-                    $timeDiff = $nextVisit->diffInSeconds($currentVisit);
+                    $timeDiff = $nextVisit->diffInSeconds($currentVisit, true);
                     if ($timeDiff < 3600) {
                         $totalTime += $timeDiff;
                         $timeCount++;
