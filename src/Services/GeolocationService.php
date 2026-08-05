@@ -142,7 +142,7 @@ class GeolocationService
 
     protected function trackLookup(string $ip, bool $success): void
     {
-        $statsKey = 'statamic_analytics_geolocation_stats';
+        $statsKey = 'statamic_analytics_geolocation_stats_' . now()->format('Y-m-d');
         $stats = Cache::get($statsKey, [
             'total_lookups'      => 0,
             'successful_lookups' => 0,
@@ -154,30 +154,56 @@ class GeolocationService
         $stats['total_lookups']++;
         $success ? $stats['successful_lookups']++ : $stats['failed_lookups']++;
 
-        if (!in_array($ip, $stats['unique_ips'])) {
+        if (!in_array($ip, $stats['unique_ips'], true)) {
             $stats['unique_ips'][] = $ip;
         }
 
         $stats['last_lookup'] = now()->toDateTimeString();
 
-        Cache::put($statsKey, $stats, now()->addDays(30));
+        // TTL fixe : la clé expire naturellement après 32 jours, bornant
+        // la mémoire dans le temps (pas de croissance indéfinie de unique_ips).
+        Cache::put($statsKey, $stats, now()->addDays(32));
     }
 
-    public static function getStats(): array
+    public static function getStats(int $days = 30): array
     {
-        return Cache::get('statamic_analytics_geolocation_stats', [
+        $aggregate = [
             'total_lookups'      => 0,
             'successful_lookups' => 0,
             'failed_lookups'     => 0,
             'unique_ips'         => [],
             'last_lookup'        => null,
-        ]);
+        ];
+
+        for ($i = 0; $i < $days; $i++) {
+            $daily = Cache::get('statamic_analytics_geolocation_stats_' . now()->subDays($i)->format('Y-m-d'));
+
+            if (!$daily) {
+                continue;
+            }
+
+            $aggregate['total_lookups']      += $daily['total_lookups'];
+            $aggregate['successful_lookups'] += $daily['successful_lookups'];
+            $aggregate['failed_lookups']     += $daily['failed_lookups'];
+            $aggregate['unique_ips']          = array_unique(array_merge(
+                $aggregate['unique_ips'],
+                $daily['unique_ips']
+            ));
+
+            if ($daily['last_lookup'] && (!$aggregate['last_lookup'] || $daily['last_lookup'] > $aggregate['last_lookup'])) {
+                $aggregate['last_lookup'] = $daily['last_lookup'];
+            }
+        }
+
+        $aggregate['unique_ips'] = array_values($aggregate['unique_ips']);
+
+        return $aggregate;
     }
 
     public static function clearCache(): void
     {
-        Cache::forget('statamic_analytics_geolocation_stats');
-        // Redis/file : on ne peut pas énumérer les clés préfixées sans pattern store
-        // On vide juste les stats ; les entrées geo_* expirent selon leur TTL
+        // Les clés de stats sont préfixées par date et expirent naturellement
+        // via leur TTL de 32 jours — aucun nettoyage manuel nécessaire.
+        // Les entrées geo_* (lookup par IP) expirent selon leur TTL configuré.
     }
 }
