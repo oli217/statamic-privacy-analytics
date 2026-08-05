@@ -69,6 +69,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Geolocation optional per-visitor via consent settings
 - Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
 - **Automatic IP retention** — `ip_address` and `user_agent` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
+- **HTTP 200-only tracking** — only responses with a `200 OK` status are recorded. Automated scans probing non-existent paths (WordPress, PHP admin panels…) and any other request returning a 404 or other non-200 status are silently ignored, without requiring a manual exclusion list.
 
 ---
 
@@ -299,6 +300,8 @@ php artisan analytics:anonymize-ips
 ```
 HTTP request
     └─ TrackPageVisit middleware
+           ├─ $next($request) → executes the full request stack
+           ├─ (skip if response status ≠ 200)
            └─ INSERT into statamic_analytics_page_views   ← direct, real-time
 
 Scheduler (every N minutes)

@@ -32,8 +32,10 @@ class TrackPageVisit
 
     public function handle(Request $request, Closure $next)
     {
+        $response = $next($request);
+
         try {
-            if ($this->shouldTrack($request)) {
+            if ($this->shouldTrack($request) && $this->isTrackableResponse($response)) {
                 $now = now();
 
                 // Store consent value before session regeneration
@@ -116,7 +118,12 @@ class TrackPageVisit
             ]);
         }
 
-        return $next($request);
+        return $response;
+    }
+
+    protected function isTrackableResponse($response): bool
+    {
+        return $response->getStatusCode() === 200;
     }
 
     protected function shouldTrack(Request $request): bool
