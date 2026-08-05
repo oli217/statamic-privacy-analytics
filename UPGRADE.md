@@ -72,3 +72,86 @@ semver guarantees that. To upgrade explicitly:
 ```bash
 composer require oliweb/statamic-privacy-analytics:^2.0
 ```
+
+---
+
+## Upgrading to 3.0
+
+**Breaking change (destructive)** : une politique de rétention des IP est désormais
+active par défaut. Les adresses IP et user-agents des pages vues de plus de 90 jours
+seront automatiquement et irréversiblement anonymisés (mis à NULL) par une commande
+planifiée quotidienne.
+
+#### Who is affected?
+
+Toute installation existante, dès la mise à jour vers 3.0 et le premier passage du
+scheduler après upgrade.
+
+#### What does NOT change
+
+- Les statistiques de fréquentation (visites, pages vues, visiteurs uniques) restent
+  intactes : elles reposent sur `visitor_id`/`session_id`, pas sur `ip_address`.
+- Les données de géolocalisation déjà résolues (`country_code`, `city`) sur les pages
+  vues existantes ne sont **pas** affectées — seules les colonnes `ip_address` et
+  `user_agent` sont mises à NULL.
+
+#### Database migration
+
+La colonne `ip_address` devient nullable. Exécutez les migrations après la mise à
+jour du package :
+
+```bash
+php artisan migrate
+```
+
+#### Options
+
+**Option A — Conserver le comportement par défaut (recommandé, conforme RGPD/nLPD) :**
+Rien à faire. La rétention de 90 jours s'applique automatiquement.
+
+**Option B — Ajuster la durée de rétention :**
+```
+# .env
+ANALYTICS_IP_RETENTION_DAYS=30
+```
+Ou dans `config/statamic-analytics.php` (après `vendor:publish`) :
+```php
+'privacy' => [
+    'ip_retention_days' => 30,
+],
+```
+
+**Option C — Désactiver l'anonymisation automatique (déconseillé) :**
+```
+# .env
+ANALYTICS_IP_RETENTION_DAYS=
+```
+Ou explicitement dans la config :
+```php
+'privacy' => [
+    'ip_retention_days' => null,
+],
+```
+> ⚠️ La conservation illimitée des IPs est non conforme au RGPD/nLPD par défaut.
+> N'activez cette option qu'en connaissance de cause et avec une base légale appropriée.
+
+#### Anonymisation manuelle
+
+Pour déclencher une anonymisation immédiate (sans attendre le scheduler) :
+```bash
+# Prévisualiser les lignes concernées
+php artisan analytics:anonymize-ips --dry-run
+
+# Anonymiser
+php artisan analytics:anonymize-ips
+```
+
+---
+
+### Composer constraint
+
+Users installing via `^2.x` will **not** receive this update automatically — Composer
+semver guarantees that. To upgrade explicitly:
+```bash
+composer require oliweb/statamic-privacy-analytics:^3.0
+```
