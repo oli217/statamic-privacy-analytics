@@ -68,6 +68,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Optional authenticated user tracking
 - Geolocation optional per-visitor via consent settings
 - Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
+- **Automatic IP retention** — `ip_address` and `user_agent` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
 
 ---
 
@@ -158,11 +159,17 @@ return [
         ],
     ],
 
+    'privacy' => [
+        'ip_retention_days' => env('ANALYTICS_IP_RETENTION_DAYS', 90), // null = unlimited (not recommended)
+    ],
+
     'enable_debugging' => false,
 ];
 ```
 
 ### Notes de configuration
+
+**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address` et `user_agent` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique (non conforme RGPD/nLPD par défaut). Voir [IP retention](#ip-retention).
 
 **`enable_debugging`** — Active les logs détaillés du middleware de tracking. À ne laisser à `true` qu'en développement.
 
@@ -255,6 +262,38 @@ This runs automatically via Laravel Scheduler at the frequency defined in config
 
 ---
 
+## IP retention
+
+By default, `ip_address` and `user_agent` are automatically set to NULL after **90 days**. This keeps historical visit counts, page view aggregates, and visitor/session identifiers intact while removing personally identifiable data.
+
+The `analytics:anonymize-ips` command runs daily via the Laravel Scheduler (auto-registered by the addon — no manual cron entry needed).
+
+### Configuration
+
+```
+# .env
+ANALYTICS_IP_RETENTION_DAYS=90   # default
+ANALYTICS_IP_RETENTION_DAYS=30   # shorter retention
+ANALYTICS_IP_RETENTION_DAYS=     # null — unlimited (not recommended)
+```
+
+### Manual run
+
+```bash
+# Preview affected rows without modifying anything
+php artisan analytics:anonymize-ips --dry-run
+
+# Run anonymisation immediately
+php artisan analytics:anonymize-ips
+```
+
+### What is NOT affected
+
+- Visit counts, unique visitor counts, and aggregate statistics — they rely on `visitor_id`/`session_id`, not on `ip_address`.
+- Already-resolved geolocation data (`country_code`, `country_name`, `city`) — only `ip_address` and `user_agent` columns are set to NULL.
+
+---
+
 ## Architecture
 
 ```
@@ -266,6 +305,12 @@ Scheduler (every N minutes)
     └─ analytics:process
            └─ DELETE + INSERT into statamic_analytics_aggregates
               (recalculated from page_views for today + yesterday)
+
+Scheduler (daily)
+    └─ analytics:anonymize-ips
+           └─ UPDATE statamic_analytics_page_views
+              SET ip_address = NULL, user_agent = NULL
+              WHERE visited_at < now() - ip_retention_days
 ```
 
 Geolocation (IP → country/city) is resolved by the configured provider — ip-api.com (HTTP, 45 req/min free tier) or MaxMind GeoLite2 (local `.mmdb` file, no external calls). Results are cached for 24 hours. With `provider: disabled`, country/city fields stay `null` and no IP leaves the server.
