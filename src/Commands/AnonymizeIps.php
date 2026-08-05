@@ -16,9 +16,14 @@ class AnonymizeIps extends Command
     {
         $retentionDays = config('statamic-analytics.privacy.ip_retention_days');
 
-        if ($retentionDays === null) {
-            $this->warn('Rétention illimitée configurée (ip_retention_days = null). Aucune anonymisation effectuée.');
+        if ($retentionDays === null || $retentionDays === '') {
+            $this->warn('Rétention illimitée configurée. Aucune anonymisation effectuée.');
             return self::SUCCESS;
+        }
+
+        if (!is_numeric($retentionDays) || (int) $retentionDays <= 0) {
+            $this->error("Valeur invalide pour privacy.ip_retention_days : '{$retentionDays}'. Anonymisation annulée par sécurité.");
+            return self::FAILURE;
         }
 
         $threshold = now()->subDays((int) $retentionDays);

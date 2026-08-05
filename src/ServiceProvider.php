@@ -109,6 +109,7 @@ class ServiceProvider extends AddonServiceProvider
 
             $schedule->command('analytics:anonymize-ips')
                 ->daily()
+                ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/analytics-scheduler.log'));
         });
     }

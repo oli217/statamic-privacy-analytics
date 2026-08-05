@@ -124,8 +124,14 @@ Ou dans `config/statamic-analytics.php` (après `vendor:publish`) :
 **Option C — Désactiver l'anonymisation automatique (déconseillé) :**
 ```
 # .env
-ANALYTICS_IP_RETENTION_DAYS=
+ANALYTICS_IP_RETENTION_DAYS=null
 ```
+> ⚠️ Le mot `null` doit être écrit littéralement, sans guillemets. Une valeur vide
+> (`ANALYTICS_IP_RETENTION_DAYS=`) est interprétée par Laravel comme une chaîne
+> vide, pas comme `null`, et ne désactive PAS l'anonymisation — elle provoquerait
+> au contraire une anonymisation immédiate de la quasi-totalité des données
+> existantes au prochain passage du scheduler.
+
 Ou explicitement dans la config :
 ```php
 'privacy' => [

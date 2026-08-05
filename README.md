@@ -274,7 +274,7 @@ The `analytics:anonymize-ips` command runs daily via the Laravel Scheduler (auto
 # .env
 ANALYTICS_IP_RETENTION_DAYS=90   # default
 ANALYTICS_IP_RETENTION_DAYS=30   # shorter retention
-ANALYTICS_IP_RETENTION_DAYS=     # null — unlimited (not recommended)
+ANALYTICS_IP_RETENTION_DAYS=null   # unlimited (not recommended) — the literal word "null" is required; a blank value is read as an empty string, not null, and would NOT disable anonymization
 ```
 
 ### Manual run
