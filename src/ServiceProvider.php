@@ -12,6 +12,7 @@ class ServiceProvider extends AddonServiceProvider
     protected $commands = [
         Commands\ProcessAnalytics::class,
         Commands\UpdateGeoIpDatabase::class,
+        Commands\AnonymizeIps::class,
     ];
 
     protected $routes = [
@@ -105,6 +106,10 @@ class ServiceProvider extends AddonServiceProvider
                 ->withoutOverlapping()
                 ->appendOutputTo(storage_path('logs/analytics-scheduler.log'))
                 ->cron($cronExpression);
+
+            $schedule->command('analytics:anonymize-ips')
+                ->daily()
+                ->appendOutputTo(storage_path('logs/analytics-scheduler.log'));
         });
     }
 

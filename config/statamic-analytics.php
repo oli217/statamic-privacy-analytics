@@ -101,6 +101,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Privacy Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure the data retention policy for IP addresses and user-agents.
+    |
+    | ip_retention_days : Nombre de jours pendant lesquels ip_address et
+    |   user_agent sont conservés avant anonymisation (mise à NULL).
+    |   null = conservation illimitée (déconseillé, non conforme RGPD/nLPD
+    |   par défaut — à activer uniquement en connaissance de cause).
+    |
+    */
+    'privacy' => [
+        'ip_retention_days' => env('ANALYTICS_IP_RETENTION_DAYS', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Dashboard Settings
     |--------------------------------------------------------------------------
     |

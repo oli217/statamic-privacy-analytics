@@ -1,0 +1,55 @@
+<?php
+
+namespace Oliweb\StatamicAnalytics\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+class AnonymizeIps extends Command
+{
+    protected $signature = 'analytics:anonymize-ips
+                            {--dry-run : Affiche le nombre de lignes concernées sans les modifier}';
+
+    protected $description = 'Anonymise ip_address et user_agent des pages vues plus anciennes que la période de rétention configurée.';
+
+    public function handle(): int
+    {
+        $retentionDays = config('statamic-analytics.privacy.ip_retention_days');
+
+        if ($retentionDays === null) {
+            $this->warn('Rétention illimitée configurée (ip_retention_days = null). Aucune anonymisation effectuée.');
+            return self::SUCCESS;
+        }
+
+        $threshold = now()->subDays((int) $retentionDays);
+
+        $query = fn () => DB::table('statamic_analytics_page_views')
+            ->where('visited_at', '<', $threshold)
+            ->where(function ($q) {
+                $q->whereNotNull('ip_address')
+                  ->orWhereNotNull('user_agent');
+            });
+
+        if ($this->option('dry-run')) {
+            $count = $query()->count();
+            $this->info("Dry run : {$count} ligne(s) seraient anonymisées (seuil : {$threshold->toDateString()}).");
+            return self::SUCCESS;
+        }
+
+        $chunkSize = config('statamic-analytics.processing.chunk_size', 1000);
+        $anonymized = 0;
+
+        $query()->chunkById($chunkSize, function ($rows) use (&$anonymized) {
+            $ids = $rows->pluck('id')->all();
+
+            DB::table('statamic_analytics_page_views')
+                ->whereIn('id', $ids)
+                ->update(['ip_address' => null, 'user_agent' => null]);
+
+            $anonymized += count($ids);
+        });
+
+        $this->info("{$anonymized} ligne(s) anonymisées (ip_address + user_agent → NULL, seuil : {$threshold->toDateString()}).");
+        return self::SUCCESS;
+    }
+}
