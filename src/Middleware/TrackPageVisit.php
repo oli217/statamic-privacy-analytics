@@ -123,7 +123,13 @@ class TrackPageVisit
 
     protected function isTrackableResponse($response): bool
     {
-        return $response->getStatusCode() === 200;
+        if ($response->getStatusCode() !== 200) {
+            return false;
+        }
+
+        $contentType = $response->headers->get('Content-Type', '');
+
+        return Str::startsWith($contentType, 'text/html');
     }
 
     protected function shouldTrack(Request $request): bool
