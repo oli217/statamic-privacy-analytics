@@ -31,7 +31,7 @@ class AnalyticsDashboardController
                 'routes' => [
                     'data'       => cp_route('statamic-analytics.data'),
                     'export'     => cp_route('statamic-analytics.export'),
-                    'clearCache' => cp_route('statamic-analytics.clear-cache'),
+                    'resetStats' => cp_route('statamic-analytics.reset-stats'),
                     'geoStats'   => cp_route('statamic-analytics.geo-stats'),
                     'realtime'   => cp_route('statamic-analytics.realtime'),
                 ],
@@ -476,10 +476,14 @@ class AnalyticsDashboardController
         return response()->json($stats);
     }
 
-    public function clearGeolocationCache()
+    public function resetStats()
     {
-        \Oliweb\StatamicAnalytics\Middleware\TrackPageVisit::clearGeolocationCache();
-        return response()->json(['message' => 'Cache cleared successfully']);
+        \Oliweb\StatamicAnalytics\Services\GeolocationService::resetStats();
+        return response()->json([
+            'success' => true,
+            'message' => 'Geolocation statistics reset. Individual IP lookup cache entries expire automatically within the configured cache_duration and cannot be force-cleared across all cache drivers.',
+            'stats'   => \Oliweb\StatamicAnalytics\Services\GeolocationService::getStats(),
+        ]);
     }
 
     protected function getComparisons($startDate, $endDate, $previousStartDate, $previousEndDate)

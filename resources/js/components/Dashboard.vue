@@ -63,8 +63,8 @@
                             <span class="ea-font-medium">{{ geoLastLookup }}</span>
                         </div>
                     </div>
-                    <button @click="clearGeoCache" :disabled="clearingCache" class="ea-btn ea-btn-primary ea-mt-4">
-                        {{ clearingCache ? t('clearing') : t('clear_geo_cache') }}
+                    <button @click="resetGeoStats" :disabled="resetting" class="ea-btn ea-btn-primary ea-mt-4">
+                        {{ resetting ? t('resetting') : t('reset_stats') }}
                     </button>
                 </div>
                 <div class="ea-space-y-4">
@@ -338,7 +338,7 @@ const dateRange  = ref('7days')
 const startDate  = ref('')
 const endDate    = ref('')
 const showSettings  = ref(false)
-const clearingCache = ref(false)
+const resetting = ref(false)
 
 // Data state
 const overview = reactive({
@@ -600,10 +600,10 @@ function onDateRangeChange() {
     if (dateRange.value !== 'custom') fetchData()
 }
 
-async function clearGeoCache() {
-    clearingCache.value = true
+async function resetGeoStats() {
+    resetting.value = true
     try {
-        const response = await fetch(props.config.routes.clearCache, {
+        const response = await fetch(props.config.routes.resetStats, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken(),
@@ -611,12 +611,12 @@ async function clearGeoCache() {
                 'Accept': 'application/json',
             },
         })
-        if (!response.ok) throw new Error('Failed to clear cache')
+        if (!response.ok) throw new Error('Failed to reset statistics')
         await fetchGeoStats()
     } catch (error) {
-        console.error('Error clearing geolocation cache:', error)
+        console.error('Error resetting geolocation statistics:', error)
     } finally {
-        setTimeout(() => { clearingCache.value = false }, 2000)
+        setTimeout(() => { resetting.value = false }, 2000)
     }
 }
 

@@ -68,7 +68,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Optional authenticated user tracking
 - Geolocation optional per-visitor via consent settings
 - Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
-- **Automatic IP retention** — `ip_address` and `user_agent` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
+- **Automatic IP retention** — `ip_address`, `user_agent`, and `user_id` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
 - **HTML-only tracking** — only responses with a `200 OK` status **and** a `text/html` Content-Type are recorded. Automated scans (404s), static assets served by third-party addons (`.js`, `.wasm`, etc.), and API JSON responses are silently ignored without requiring a manual exclusion list.
 - **Session-safe** — the tracking middleware never invalidates or regenerates the session. It only adds its own keys (`analytics_session_started`, `visitor_id`, `visited_pages`, `last_visit_date`, `last_visit_hour`); all pre-existing session data (cart, auth, form state, etc.) is left intact.
 
@@ -171,7 +171,7 @@ return [
 
 ### Notes de configuration
 
-**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address` et `user_agent` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique (non conforme RGPD/nLPD par défaut). Voir [IP retention](#ip-retention).
+**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address`, `user_agent` et `user_id` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique (non conforme RGPD/nLPD par défaut). Voir [IP retention](#ip-retention).
 
 **`enable_debugging`** — Active les logs détaillés du middleware de tracking. À ne laisser à `true` qu'en développement.
 
@@ -266,7 +266,9 @@ This runs automatically via Laravel Scheduler at the frequency defined in config
 
 ## IP retention
 
-By default, `ip_address` and `user_agent` are automatically set to NULL after **90 days**. This keeps historical visit counts, page view aggregates, and visitor/session identifiers intact while removing personally identifiable data.
+By default, `ip_address`, `user_agent`, and `user_id` are automatically set to NULL after **90 days**. This keeps historical visit counts, page view aggregates, and visitor/session identifiers intact while removing personally identifiable data.
+
+`track_authenticated_users` is enabled by default, so authenticated user IDs are recorded at visit time. However, the `user_id` link is automatically broken at the same retention threshold as the IP — it is therefore not a permanent association.
 
 The `analytics:anonymize-ips` command runs daily via the Laravel Scheduler (auto-registered by the addon — no manual cron entry needed).
 
@@ -292,7 +294,7 @@ php artisan analytics:anonymize-ips
 ### What is NOT affected
 
 - Visit counts, unique visitor counts, and aggregate statistics — they rely on `visitor_id`/`session_id`, not on `ip_address`.
-- Already-resolved geolocation data (`country_code`, `country_name`, `city`) — only `ip_address` and `user_agent` columns are set to NULL.
+- Already-resolved geolocation data (`country_code`, `country_name`, `city`) — only `ip_address`, `user_agent`, and `user_id` columns are set to NULL.
 
 ---
 
@@ -313,7 +315,7 @@ Scheduler (every N minutes)
 Scheduler (daily)
     └─ analytics:anonymize-ips
            └─ UPDATE statamic_analytics_page_views
-              SET ip_address = NULL, user_agent = NULL
+              SET ip_address = NULL, user_agent = NULL, user_id = NULL
               WHERE visited_at < now() - ip_retention_days
 ```
 

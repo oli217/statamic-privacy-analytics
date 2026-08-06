@@ -26,19 +26,19 @@ class AnalyticsSettingsController
         ]);
     }
 
-    public function clearCache()
+    public function resetStats()
     {
         try {
-            GeolocationService::clearCache();
+            GeolocationService::resetStats();
             return response()->json([
                 'success' => true,
-                'message' => 'Geolocation cache cleared successfully.',
-                'stats' => GeolocationService::getStats()
+                'message' => 'Geolocation statistics reset. Individual IP lookup cache entries expire automatically within the configured cache_duration and cannot be force-cleared across all cache drivers.',
+                'stats'   => GeolocationService::getStats(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to clear cache: ' . $e->getMessage()
+                'message' => 'Failed to reset statistics: ' . $e->getMessage()
             ], 500);
         }
     }

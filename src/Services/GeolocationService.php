@@ -154,8 +154,9 @@ class GeolocationService
         $stats['total_lookups']++;
         $success ? $stats['successful_lookups']++ : $stats['failed_lookups']++;
 
-        if (!in_array($ip, $stats['unique_ips'], true)) {
-            $stats['unique_ips'][] = $ip;
+        $ipHash = hash('sha256', $ip);
+        if (!in_array($ipHash, $stats['unique_ips'], true)) {
+            $stats['unique_ips'][] = $ipHash;
         }
 
         $stats['last_lookup'] = now()->toDateTimeString();
@@ -200,10 +201,10 @@ class GeolocationService
         return $aggregate;
     }
 
-    public static function clearCache(): void
+    public static function resetStats(int $days = 32): void
     {
-        // Les clés de stats sont préfixées par date et expirent naturellement
-        // via leur TTL de 32 jours — aucun nettoyage manuel nécessaire.
-        // Les entrées geo_* (lookup par IP) expirent selon leur TTL configuré.
+        for ($i = 0; $i < $days; $i++) {
+            Cache::forget('statamic_analytics_geolocation_stats_' . now()->subDays($i)->format('Y-m-d'));
+        }
     }
 }

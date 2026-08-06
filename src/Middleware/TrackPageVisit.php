@@ -25,9 +25,9 @@ class TrackPageVisit
         return GeolocationService::getStats();
     }
 
-    public static function clearGeolocationCache(): void
+    public static function resetStats(): void
     {
-        GeolocationService::clearCache();
+        GeolocationService::resetStats();
     }
 
     public function handle(Request $request, Closure $next)
@@ -82,7 +82,7 @@ class TrackPageVisit
                     'device_type'       => $this->getDeviceType(),
                     'browser'           => $this->agent->browser(),
                     'platform'          => $this->agent->platform(),
-                    'referrer_url'      => $request->header('referer'),
+                    'referrer_url'      => $this->sanitizeReferrer($request->header('referer')),
                     'user_id'           => auth()->id(),
                     'session_id'        => $request->session()->getId(),
                     'visitor_id'        => $visitorId,
@@ -174,5 +174,24 @@ class TrackPageVisit
         }
 
         return 'desktop';
+    }
+
+    protected function sanitizeReferrer(?string $referer): ?string
+    {
+        if (!$referer) {
+            return null;
+        }
+
+        $parts = parse_url($referer);
+
+        if ($parts === false || !isset($parts['host'])) {
+            return null;
+        }
+
+        $scheme = $parts['scheme'] ?? 'https';
+        $host   = $parts['host'];
+        $path   = $parts['path'] ?? '';
+
+        return "{$scheme}://{$host}{$path}";
     }
 }
