@@ -38,20 +38,8 @@ class TrackPageVisit
             if ($this->shouldTrack($request) && $this->isTrackableResponse($response)) {
                 $now = now();
 
-                // Store consent value before session regeneration
-                $consentValue = session('analytics_consent');
-                $consentSettings = session('analytics_settings');
-
-                // Force session regeneration for fresh tracking
                 if (!$request->session()->has('analytics_session_started')) {
-                    $request->session()->invalidate();
-                    $request->session()->regenerate();
                     $request->session()->put('analytics_session_started', true);
-
-                    if (!is_null($consentValue)) {
-                        $request->session()->put('analytics_consent', $consentValue);
-                        $request->session()->put('analytics_settings', $consentSettings);
-                    }
                 }
 
                 // Generate or get visitor ID

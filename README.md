@@ -70,6 +70,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
 - **Automatic IP retention** — `ip_address` and `user_agent` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
 - **HTML-only tracking** — only responses with a `200 OK` status **and** a `text/html` Content-Type are recorded. Automated scans (404s), static assets served by third-party addons (`.js`, `.wasm`, etc.), and API JSON responses are silently ignored without requiring a manual exclusion list.
+- **Session-safe** — the tracking middleware never invalidates or regenerates the session. It only adds its own keys (`analytics_session_started`, `visitor_id`, `visited_pages`, `last_visit_date`, `last_visit_hour`); all pre-existing session data (cart, auth, form state, etc.) is left intact.
 
 ---
 
