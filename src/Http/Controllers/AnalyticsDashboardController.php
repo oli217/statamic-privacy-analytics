@@ -349,10 +349,18 @@ class AnalyticsDashboardController
 
     protected function getHeatmapData($startDate, $endDate)
     {
+        $driver = DB::getDriverName();
+        $hourExpr = $driver === 'sqlite'
+            ? "CAST(strftime('%H', visited_at) AS INTEGER)"
+            : "HOUR(visited_at)";
+        $dayExpr  = $driver === 'sqlite'
+            ? "CAST(strftime('%w', visited_at) AS INTEGER) + 1"
+            : "DAYOFWEEK(visited_at)";
+
         $rows = DB::table('statamic_analytics_page_views')
             ->select(
-                DB::raw("CAST(strftime('%H', visited_at) AS INTEGER) as hour"),
-                DB::raw("CAST(strftime('%w', visited_at) AS INTEGER) + 1 as day"),
+                DB::raw("$hourExpr as hour"),
+                DB::raw("$dayExpr as day"),
                 DB::raw('COUNT(*) as count')
             )
             ->whereBetween('visited_at', [$startDate, $endDate])

@@ -77,7 +77,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 
 - PHP ≥ 8.3
 - Statamic ≥ 6.0
-- MariaDB / MySQL
+- SQLite, MySQL, MariaDB
 
 ---
 
