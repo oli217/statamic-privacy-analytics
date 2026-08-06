@@ -1,6 +1,6 @@
 <?php
 
-namespace Mohammedshuaau\EnhancedAnalytics\Tests;
+namespace Oliweb\StatamicAnalytics\Tests;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;

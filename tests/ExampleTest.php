@@ -1,6 +1,6 @@
 <?php
 
-namespace Mohammedshuaau\EnhancedAnalytics\Tests;
+namespace Oliweb\StatamicAnalytics\Tests;
 
 class ExampleTest extends TestCase
 {
