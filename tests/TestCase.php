@@ -2,7 +2,7 @@
 
 namespace Oliweb\StatamicAnalytics\Tests;
 
-use Mohammedshuaau\EnhancedAnalytics\ServiceProvider;
+use Oliweb\StatamicAnalytics\ServiceProvider;
 use Statamic\Testing\AddonTestCase;
 
 abstract class TestCase extends AddonTestCase
