@@ -202,7 +202,7 @@ ANALYTICS_RAW_RETENTION_DAYS=365
 # .env
 ANALYTICS_RAW_RETENTION_DAYS=null
 ```
-> ⚠️ Le mot `null` doit être écrit littéralement. Une valeur vide désactiverait la purge via la garde défensive, mais n'est pas garantie selon les versions de Laravel.
+> ⚠️ Le mot `null` doit être écrit littéralement. Une valeur vide (`ANALYTICS_RAW_RETENTION_DAYS=`) est lue par Laravel comme une chaîne vide et non comme `null` — la garde défensive la traite comme une rétention illimitée, ce qui est le comportement attendu, mais l'intention reste ambiguë à la lecture du fichier `.env`.
 
 #### Avant de mettre à jour
 
