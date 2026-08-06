@@ -264,6 +264,67 @@ This runs automatically via Laravel Scheduler at the frequency defined in config
 
 ---
 
+## Asynchronous tracking (opt-in)
+
+By default, page view recording (geolocation lookup + database write) happens synchronously during the HTTP request. For sites with very high traffic where the DB write or geolocation resolution becomes a **measured** bottleneck, you can offload this work to a Laravel queue worker.
+
+> **For the vast majority of sites (low to medium traffic), this mode brings no measurable benefit.** Only enable it when you have concrete evidence that synchronous recording is a bottleneck — not as a precaution.
+
+### What moves to the queue vs. what stays synchronous
+
+| Stays synchronous (HTTP request) | Deferred to queue worker |
+|---|---|
+| Session mutations (`visitor_id`, `visited_pages`, flags) | Geolocation lookup (IP → country/city) |
+| User-agent parsing, device/browser detection | Database INSERT |
+| Referrer sanitization | — |
+
+Session data **must** be manipulated during the HTTP cycle. It cannot be safely accessed from a queue job running outside the request context.
+
+### Configuration
+
+```
+# .env
+ANALYTICS_QUEUE_CONNECTION=redis   # any Laravel queue connection
+ANALYTICS_QUEUE_NAME=analytics     # optional, defaults to "analytics"
+```
+
+```php
+// config/statamic-analytics.php
+'tracking' => [
+    'queue_connection' => env('ANALYTICS_QUEUE_CONNECTION', null), // null = synchronous (default)
+    'queue_name'       => env('ANALYTICS_QUEUE_NAME', 'analytics'),
+    // ... existing keys unchanged
+],
+```
+
+`queue_connection = null` (the default) preserves the existing synchronous behaviour exactly. No worker is needed.
+
+### Prerequisites
+
+**A queue worker must be running**, otherwise jobs accumulate in the queue storage without ever executing:
+
+```bash
+php artisan queue:work --queue=analytics
+```
+
+In production, supervise it with Supervisor or a systemd unit so it restarts automatically.
+
+**Multi-container / split worker deployments** — if your web server and queue worker run in separate containers or machines, the MaxMind `GeoLite2-City.mmdb` file must be accessible on a shared volume mounted at the same path on both sides. Without it, geolocation silently falls back to `emptyResult()` (all geo fields remain `null`) — the visit is still recorded, but without country/city data.
+
+### Retry behaviour
+
+Jobs use 3 attempts with an exponential backoff of 10 / 30 / 60 seconds. Definitive failures appear in Laravel's standard `failed_jobs` table.
+
+### Safety net
+
+If the dispatch itself fails (misconfigured queue connection, driver unavailable), the middleware catches the exception, logs an error, and falls back to synchronous recording so no page view is lost:
+
+```
+StatamicAnalytics: échec du dispatch en file d'attente, retour en écriture synchrone
+```
+
+---
+
 ## IP retention
 
 By default, `ip_address`, `user_agent`, and `user_id` are automatically set to NULL after **90 days**. This keeps historical visit counts, page view aggregates, and visitor/session identifiers intact while removing personally identifiable data.

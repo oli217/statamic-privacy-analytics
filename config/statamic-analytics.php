@@ -86,6 +86,8 @@ return [
         ],
         'exclude_bots' => true,
         'track_authenticated_users' => true,
+        'queue_connection' => env('ANALYTICS_QUEUE_CONNECTION', null), // null = synchrone (défaut)
+        'queue_name'       => env('ANALYTICS_QUEUE_NAME', 'analytics'),
         'consent' => [
             'enabled' => false,
             'banner' => [

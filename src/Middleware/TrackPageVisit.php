@@ -4,12 +4,13 @@ namespace Oliweb\StatamicAnalytics\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Jenssegers\Agent\Agent;
 use Carbon\Carbon;
+use Oliweb\StatamicAnalytics\Jobs\TrackPageViewJob;
 use Oliweb\StatamicAnalytics\Services\GeolocationService;
+use Oliweb\StatamicAnalytics\Services\PageViewRecorder;
 
 class TrackPageVisit
 {
@@ -56,9 +57,6 @@ class TrackPageVisit
                 $pageUrl = $request->path();
                 $ipAddress = $request->ip();
 
-                // Get geographic data
-                $geoData = (new GeolocationService())->lookup($ipAddress);
-
                 // Track page uniqueness per session
                 $visitedPages = $request->session()->get('visited_pages', []);
                 $isNewPageVisit = !in_array($pageUrl, $visitedPages);
@@ -74,14 +72,10 @@ class TrackPageVisit
                 $lastVisitDate = $request->session()->get('last_visit_date');
                 $lastVisitHour = $request->session()->get('last_visit_hour');
 
-                // Write directly to DB
-                DB::table('statamic_analytics_page_views')->insert([
+                $data = [
                     'page_url'          => $pageUrl,
                     'ip_address'        => $ipAddress,
                     'user_agent'        => $request->userAgent(),
-                    'country_code'      => $geoData['country_code'],
-                    'country_name'      => $geoData['country_name'],
-                    'city'              => $geoData['city'],
                     'device_type'       => $this->getDeviceType(),
                     'browser'           => $this->agent->browser(),
                     'platform'          => $this->agent->platform(),
@@ -96,7 +90,24 @@ class TrackPageVisit
                     'visited_at'        => $now->format('Y-m-d H:i:s'),
                     'created_at'        => $now,
                     'updated_at'        => $now,
-                ]);
+                ];
+
+                $queueConnection = config('statamic-analytics.tracking.queue_connection');
+
+                if ($queueConnection) {
+                    try {
+                        TrackPageViewJob::dispatch($data)
+                            ->onConnection($queueConnection)
+                            ->onQueue(config('statamic-analytics.tracking.queue_name', 'analytics'));
+                    } catch (\Exception $e) {
+                        Log::error('StatamicAnalytics: échec du dispatch en file d\'attente, retour en écriture synchrone', [
+                            'error' => $e->getMessage(),
+                        ]);
+                        (new PageViewRecorder())->record($data);
+                    }
+                } else {
+                    (new PageViewRecorder())->record($data);
+                }
 
                 // Update session timestamps
                 $request->session()->put('last_visit_date', $now);
