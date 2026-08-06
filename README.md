@@ -298,6 +298,55 @@ php artisan analytics:anonymize-ips
 
 ---
 
+## Raw event retention
+
+By default, raw page view rows are permanently deleted after **180 days** via the `analytics:purge-raw-events` command (runs daily, auto-registered by the addon).
+
+This is distinct from IP anonymisation (`ip_retention_days`): anonymisation sets PII columns to NULL but keeps the row; purge removes the row entirely.
+
+### Configuration
+
+```
+# .env
+ANALYTICS_RAW_RETENTION_DAYS=180   # default
+ANALYTICS_RAW_RETENTION_DAYS=365   # longer window
+ANALYTICS_RAW_RETENTION_DAYS=null  # unlimited (not recommended) — literal "null" required
+```
+
+### Manual run
+
+```bash
+# Preview affected rows without deleting
+php artisan analytics:purge-raw-events --dry-run
+
+# Run purge immediately
+php artisan analytics:purge-raw-events
+```
+
+### What survives indefinitely (aggregate table)
+
+The `_overview` dimension (written by `analytics:process` on each run) preserves per-day totals regardless of purge:
+
+- Total visits
+- Unique visitors
+- Unique page views
+- Returning visitors
+
+Country, device, browser, and platform breakdowns are also preserved in the aggregate table.
+
+### What does NOT survive beyond the raw retention window
+
+Widgets that query `statamic_analytics_page_views` directly will show empty data for dates older than the retention window:
+
+- Individual page performance (top pages, avg. time, exit rate)
+- Traffic sources and referrers
+- Hourly activity heatmap
+- Session depth
+- User flow (entry/exit pages)
+- Avg. session duration
+
+---
+
 ## Architecture
 
 ```

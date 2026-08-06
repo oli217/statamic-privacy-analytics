@@ -113,7 +113,8 @@ return [
     |
     */
     'privacy' => [
-        'ip_retention_days' => env('ANALYTICS_IP_RETENTION_DAYS', 90),
+        'ip_retention_days'  => env('ANALYTICS_IP_RETENTION_DAYS', 90),
+        'raw_retention_days' => env('ANALYTICS_RAW_RETENTION_DAYS', 180),
     ],
 
     /*

@@ -65,6 +65,9 @@ class TrackPageVisit
 
                 if ($isNewPageVisit) {
                     $visitedPages[] = $pageUrl;
+                    if (count($visitedPages) > 20) {
+                        $visitedPages = array_slice($visitedPages, -20);
+                    }
                     $request->session()->put('visited_pages', array_unique($visitedPages));
                 }
 

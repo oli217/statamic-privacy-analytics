@@ -70,7 +70,8 @@ class ProcessAnalytics extends Command
                     DB::raw('SUM(CASE WHEN is_new_page_visit = 1 THEN 1 ELSE 0 END) as unique_page_views'),
                     DB::raw('SUM(CASE WHEN is_new_visitor = 0 THEN 1 ELSE 0 END) as returning_visitors')
                 )
-                ->whereDate('visited_at', $date)
+                ->where('visited_at', '>=', Carbon::parse($date)->startOfDay())
+                ->where('visited_at', '<', Carbon::parse($date)->addDay()->startOfDay())
                 ->whereNotNull($dimension)
                 ->where($dimension, '!=', '')
                 ->groupBy($dimension)
@@ -91,5 +92,35 @@ class ProcessAnalytics extends Command
                 ]);
             }
         }
+
+        // Agrégat _overview : résumé journalier sans groupement, survit à la purge des événements bruts
+        DB::table('statamic_analytics_aggregates')
+            ->where('type', 'daily')
+            ->where('date', $date)
+            ->where('dimension', '_overview')
+            ->delete();
+
+        $overview = DB::table('statamic_analytics_page_views')
+            ->where('visited_at', '>=', Carbon::parse($date)->startOfDay())
+            ->where('visited_at', '<', Carbon::parse($date)->addDay()->startOfDay())
+            ->selectRaw('
+                COUNT(*) as total_visits,
+                SUM(CASE WHEN is_new_visitor = 1 THEN 1 ELSE 0 END) as unique_visitors,
+                SUM(CASE WHEN is_new_page_visit = 1 THEN 1 ELSE 0 END) as unique_page_views,
+                SUM(CASE WHEN is_new_visitor = 0 THEN 1 ELSE 0 END) as returning_visitors
+            ')
+            ->first();
+
+        DB::table('statamic_analytics_aggregates')->insert([
+            'type'               => 'daily',
+            'date'               => $date,
+            'dimension'          => '_overview',
+            'dimension_value'    => '_all',
+            'total_visits'       => $overview->total_visits ?? 0,
+            'unique_visitors'    => $overview->unique_visitors ?? 0,
+            'unique_page_views'  => $overview->unique_page_views ?? 0,
+            'returning_visitors' => $overview->returning_visitors ?? 0,
+            'updated_at'         => Carbon::now(),
+        ]);
     }
 }

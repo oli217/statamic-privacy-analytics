@@ -2,7 +2,9 @@
 
 namespace Oliweb\StatamicAnalytics\Services;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class GeolocationService
@@ -63,27 +65,32 @@ class GeolocationService
             return $this->emptyResult();
         }
 
+        Cache::put($rateLimitKey . '_' . $currentMinute, $requestCount + 1, 60);
+
+        $data = null;
         try {
-            Cache::put($rateLimitKey . '_' . $currentMinute, $requestCount + 1, 60);
+            $response = Http::timeout(2)->connectTimeout(1)->get("http://ip-api.com/json/{$ip}", [
+                'fields' => 'status,message,countryCode,country,city',
+            ]);
+            $data = $response->successful() ? $response->json() : null;
+        } catch (ConnectionException $e) {
+            Log::warning('StatamicAnalytics: ip-api connection error', ['error' => $e->getMessage()]);
+        }
 
-            $response = file_get_contents("http://ip-api.com/json/{$ip}?fields=status,message,countryCode,country,city");
-            $data = json_decode($response, true);
+        if ($data && ($data['status'] ?? null) === 'success') {
+            $this->trackLookup($ip, true);
+            return [
+                'country_code' => $data['countryCode'] ?? null,
+                'country_name' => $data['country'] ?? null,
+                'city'         => $data['city'] ?? null,
+            ];
+        }
 
-            if ($data && ($data['status'] ?? null) === 'success') {
-                $this->trackLookup($ip, true);
-                return [
-                    'country_code' => $data['countryCode'] ?? null,
-                    'country_name' => $data['country'] ?? null,
-                    'city'         => $data['city'] ?? null,
-                ];
-            }
-
+        if ($data !== null) {
             Log::warning('StatamicAnalytics: ip-api lookup failed', [
                 'status'  => $data['status'] ?? 'unknown',
                 'message' => $data['message'] ?? '',
             ]);
-        } catch (\Exception $e) {
-            Log::error('StatamicAnalytics: ip-api error', ['error' => $e->getMessage()]);
         }
 
         $this->trackLookup($ip, false);

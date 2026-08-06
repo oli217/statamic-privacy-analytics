@@ -161,3 +161,66 @@ semver guarantees that. To upgrade explicitly:
 ```bash
 composer require oliweb/statamic-privacy-analytics:^3.0
 ```
+
+---
+
+## Upgrading to 4.0
+
+### Breaking change : purge définitive des événements bruts activée par défaut
+
+À partir de la v4.0, une nouvelle commande planifiée quotidienne (`analytics:purge-raw-events`) supprime **définitivement et irréversiblement** les lignes de `statamic_analytics_page_views` de plus de 180 jours. C'est une suppression de lignes, pas une anonymisation : les données ne sont pas récupérables.
+
+#### Who is affected?
+
+Toute installation existante avec des données de plus de 180 jours, dès le premier passage du scheduler après la mise à jour.
+
+#### Ce qui est préservé indéfiniment
+
+Les agrégats quotidiens dans `statamic_analytics_aggregates` **ne sont pas affectés** par la purge. La dimension `_overview` (nouvelle en v4.0) conserve par jour :
+- Visites totales, visiteurs uniques, pages vues uniques, visiteurs récurrents
+
+Les dimensions existantes (pays, appareil, navigateur, plateforme) sont également préservées.
+
+#### Ce qui disparaît au-delà de la fenêtre de rétention brute
+
+Les widgets suivants afficheront des données vides pour les dates antérieures à la fenêtre :
+pages individuelles, sources de trafic, referrers, heatmap horaire, profondeur de session, temps moyen par page, flux utilisateurs.
+
+#### Options
+
+**Option A — Conserver le comportement par défaut (recommandé) :**
+Rien à faire. La rétention brute de 180 jours s'applique automatiquement.
+
+**Option B — Ajuster la durée :**
+```
+# .env
+ANALYTICS_RAW_RETENTION_DAYS=365
+```
+
+**Option C — Désactiver la purge automatique (déconseillé) :**
+```
+# .env
+ANALYTICS_RAW_RETENTION_DAYS=null
+```
+> ⚠️ Le mot `null` doit être écrit littéralement. Une valeur vide désactiverait la purge via la garde défensive, mais n'est pas garantie selon les versions de Laravel.
+
+#### Avant de mettre à jour
+
+Faire un `--dry-run` pour évaluer l'impact sur vos données existantes :
+```bash
+php artisan analytics:purge-raw-events --dry-run
+```
+
+### Autres changements v4.0
+
+- **Route CP renommée** : `statamic-analytics.clear-cache` → `statamic-analytics.reset-stats` (depuis v3.2.0, inclus ici pour signaler le changement d'API).
+- **`AnalyticsSettingsController` supprimé** : contrôleur sans route ni vue, résidu du fork.
+- **ip-api** : `file_get_contents` remplacé par la façade `Http` (timeout 2 s / connect 1 s).
+- **Session `visited_pages` bornée** à 20 entrées maximum.
+- **`_overview` dans les agrégats** : `analytics:process` écrit désormais un résumé journalier sans groupement (dimension `_overview`, dimension_value `_all`).
+
+### Composer constraint
+
+```bash
+composer require oliweb/statamic-privacy-analytics:^4.0
+```
