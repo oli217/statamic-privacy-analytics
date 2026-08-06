@@ -75,6 +75,7 @@ class TrackPageVisit
                 $lastVisitHour = $request->session()->get('last_visit_hour');
 
                 $data = [
+                    'event_id'          => (string) Str::uuid(),
                     'page_url'          => $pageUrl,
                     'ip_address'        => $ipAddress,
                     'user_agent'        => $request->userAgent(),
