@@ -1,6 +1,6 @@
 # Privacy Analytics for Statamic
 
-A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-party scripts. No cookies by default. Your data stays on your server.
+A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-party scripts. No analytics-specific cookies by default (the addon uses the host application's Laravel session, which may itself rely on a session cookie). Your data stays on your server.
 
 > Fork of [mohammedshuaau/enhanced-analytics](https://github.com/mohammedshuaau/enhanced-analytics) — significantly extended and refactored.
 
@@ -8,7 +8,7 @@ A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-p
 
 - **Zero external tracking dependencies** — no Google Analytics, no Matomo cloud, no Plausible cloud
 - **Direct DB writes** — every page view is recorded instantly, no processing queue needed for real-time data
-- **GDPR-ready** — built-in consent banner with granular controls (optional)
+- **Privacy-conscious by design** — configurable data retention, anonymisation, purge, consent banner (optional), and disableable geolocation; provides the mechanisms for GDPR/nLPD-conscious deployments without constituting a legal guarantee in itself
 - **Geolocation** — IP → country/city via [ip-api.com](https://ip-api.com) (HTTP, free tier) or locally with [MaxMind GeoLite2](https://www.maxmind.com/en/geolite2/signup) (no external calls)
 
 ---
@@ -65,7 +65,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - Consent banner (disabled by default) with granular controls
 - Bot filtering
 - Configurable excluded paths and IPs
-- Optional authenticated user tracking
+- Optional authenticated user tracking — when enabled (default), the authenticated user ID is temporarily associated with analytics events and automatically set to NULL during the anonymisation process (`privacy.ip_retention_days`); this is not a permanent association
 - Geolocation optional per-visitor via consent settings
 - Three providers : `ip-api` (external HTTP), `maxmind` (local database, no external calls), `disabled`
 - **Automatic IP retention** — `ip_address`, `user_agent`, and `user_id` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
@@ -78,7 +78,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 
 - PHP ≥ 8.3
 - Statamic ≥ 6.0
-- SQLite, MySQL, MariaDB
+- Any database engine supported by your Statamic/Laravel installation — the addon uses Laravel's database abstraction exclusively and does not require a specific engine. Tested in CI against: SQLite, MySQL 8.0, MariaDB 11.
 
 ---
 
@@ -198,6 +198,8 @@ ANALYTICS_GEO_PROVIDER=ip-api      # external HTTP, no credentials needed
 
 > **If `maxmind` is active but credentials are not configured**, a warning banner appears in the Control Panel dashboard and geolocation will silently return empty results. Geographic widgets (Top countries, Top cities) are hidden entirely when provider is `disabled`.
 
+> **`ip-api` is an optional external provider, not the default.** When active, visitor IP addresses are transmitted to ip-api.com with each uncached geolocation request. The 45 req/min rate limit is a constraint of the ip-api.com free tier, not a configuration choice of this addon. For full privacy with no external IP transmission, use `maxmind` (local database) or `disabled`.
+
 
 ### MaxMind GeoLite2 (recommended for full privacy)
 
@@ -214,7 +216,7 @@ ANALYTICS_GEO_PROVIDER=ip-api      # external HTTP, no credentials needed
    php artisan analytics:update-geoip
    ```
 
-> **Important :** `analytics:update-geoip` n'est **pas** planifié automatiquement par l'addon (contrairement à `analytics:process`). Vous devez l'ajouter vous-même dans `routes/console.php` :
+> **Important :** `analytics:update-geoip` n'est **pas** planifié automatiquement par l'addon — c'est un choix délibéré. Déclencher automatiquement un téléchargement vers un service externe est une décision d'infrastructure qui appartient à chaque projet, pas à un addon. Ajoutez-le vous-même dans `routes/console.php` selon vos préférences de fréquence :
 
 ```php
 // routes/console.php
@@ -323,7 +325,7 @@ The `analytics:purge-failed-jobs` command automatically removes stale `TrackPage
 
 ### Safety net
 
-If the dispatch itself fails (misconfigured queue connection, driver unavailable), the middleware catches the exception, logs an error, and falls back to synchronous recording so no page view is lost:
+If queue dispatch fails (misconfigured connection, driver unavailable), the middleware catches the exception, logs an error, and falls back to synchronous recording. This does not cover post-dispatch failures (worker crash, job exhausting its retries) — those appear in `failed_jobs` and are handled by `analytics:purge-failed-jobs`:
 
 ```
 StatamicAnalytics: échec du dispatch en file d'attente, retour en écriture synchrone
