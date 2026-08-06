@@ -315,6 +315,12 @@ In production, supervise it with Supervisor or a systemd unit so it restarts aut
 
 Jobs use 3 attempts with an exponential backoff of 10 / 30 / 60 seconds. Definitive failures appear in Laravel's standard `failed_jobs` table.
 
+### Payload encryption
+
+`TrackPageViewJob` implements `ShouldBeEncrypted`. The job payload — which may contain IP addresses, user-agents, and user IDs — is **encrypted with `APP_KEY`** before being pushed to the queue backend. This applies equally to `failed_jobs` entries written on definitive failure: no PII reaches the queue storage or the failed-jobs table in plaintext.
+
+The `analytics:purge-failed-jobs` command automatically removes stale `TrackPageViewJob` entries from `failed_jobs` using the same `ip_retention_days` threshold, so encrypted payloads do not accumulate indefinitely.
+
 ### Safety net
 
 If the dispatch itself fails (misconfigured queue connection, driver unavailable), the middleware catches the exception, logs an error, and falls back to synchronous recording so no page view is lost:

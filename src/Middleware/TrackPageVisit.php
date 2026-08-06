@@ -38,6 +38,8 @@ class TrackPageVisit
         try {
             if ($this->shouldTrack($request) && $this->isTrackableResponse($response)) {
                 $now = now();
+                $today = $now->format('Y-m-d');
+                $currentHour = $now->format('Y-m-d H');
 
                 if (!$request->session()->has('analytics_session_started')) {
                     $request->session()->put('analytics_session_started', true);
@@ -84,8 +86,8 @@ class TrackPageVisit
                     'session_id'        => $request->session()->getId(),
                     'visitor_id'        => $visitorId,
                     'is_new_visitor'    => $isNewVisitor,
-                    'is_new_day_visit'  => !$lastVisitDate,
-                    'is_new_hour_visit' => !$lastVisitHour,
+                    'is_new_day_visit'  => $lastVisitDate !== $today,
+                    'is_new_hour_visit' => $lastVisitHour !== $currentHour,
                     'is_new_page_visit' => $isNewPageVisit,
                     'visited_at'        => $now->format('Y-m-d H:i:s'),
                     'created_at'        => $now,
@@ -110,8 +112,8 @@ class TrackPageVisit
                 }
 
                 // Update session timestamps
-                $request->session()->put('last_visit_date', $now);
-                $request->session()->put('last_visit_hour', $now);
+                $request->session()->put('last_visit_date', $today);
+                $request->session()->put('last_visit_hour', $currentHour);
             }
         } catch (\Exception $e) {
             Log::error('Enhanced Analytics: Error in middleware', [

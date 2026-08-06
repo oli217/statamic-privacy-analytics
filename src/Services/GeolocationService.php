@@ -39,7 +39,7 @@ class GeolocationService
             return $this->emptyResult();
         }
 
-        $cacheKey = 'statamic_analytics_geo_' . $ip;
+        $cacheKey = 'statamic_analytics_geo_' . hash_hmac('sha256', $ip, config('app.key'));
         $ttl = config('statamic-analytics.geolocation.cache_duration', 60 * 24) * 60;
 
         return Cache::remember($cacheKey, $ttl, function () use ($ip) {
@@ -161,7 +161,7 @@ class GeolocationService
         $stats['total_lookups']++;
         $success ? $stats['successful_lookups']++ : $stats['failed_lookups']++;
 
-        $ipHash = hash('sha256', $ip);
+        $ipHash = hash_hmac('sha256', $ip, config('app.key'));
         if (!in_array($ipHash, $stats['unique_ips'], true)) {
             $stats['unique_ips'][] = $ipHash;
         }
