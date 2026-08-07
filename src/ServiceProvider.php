@@ -82,7 +82,7 @@ class ServiceProvider extends AddonServiceProvider
         $widgets = config('statamic.cp.widgets', []);
         if (!collect($widgets)->contains('type', 'analytics_overview')) {
             config(['statamic.cp.widgets' => array_merge($widgets, [
-                ['type' => 'analytics_overview', 'width' => 50],
+                ['type' => 'analytics_overview', 'width' => 50, 'can' => ['analytics.view']],
             ])]);
         }
 

@@ -12,6 +12,10 @@ class AnalyticsOverviewWidget extends Widget
 
     public function html()
     {
+        if (!auth()->user()?->can('analytics.view')) {
+            return '';
+        }
+
         try {
             $todayVisits = DB::table('statamic_analytics_page_views')
                 ->where('visited_at', '>=', Carbon::today())->count();
