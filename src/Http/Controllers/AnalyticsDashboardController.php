@@ -438,7 +438,7 @@ class AnalyticsDashboardController
 
         $data = DB::table('statamic_analytics_page_views')
             ->whereBetween('visited_at', [$startDate, $endDate])
-            ->get();
+            ->cursor();
 
         return response()->streamDownload(function () use ($data) {
             $output = fopen('php://output', 'w');

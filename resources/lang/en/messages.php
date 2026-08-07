@@ -17,7 +17,8 @@ return [
 
     // Header buttons
     'refresh_data' => 'Refresh Data',
-    'export_data'  => 'Export Data',
+    'export_data'         => 'Export Data',
+    'export_gdpr_warning' => 'This export contains plain-text IP addresses and other personal data. Continue?',
     'settings'     => 'Settings',
 
     // Settings panel

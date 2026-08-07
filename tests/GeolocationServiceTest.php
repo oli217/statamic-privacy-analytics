@@ -202,6 +202,64 @@ class GeolocationServiceTest extends TestCase
         }
     }
 
+    #[Test]
+    public function test_ip_api_rate_limit_compteur_incremente_par_appel(): void
+    {
+        $now = Carbon::now();
+        Carbon::setTestNow($now);
+
+        try {
+            config([
+                'statamic-analytics.geolocation.provider'          => 'ip-api',
+                'statamic-analytics.geolocation.ip_api.rate_limit' => 45,
+            ]);
+            Http::fake([
+                'ip-api.com/*' => Http::response([
+                    'status'      => 'success',
+                    'countryCode' => 'FR',
+                    'country'     => 'France',
+                    'city'        => 'Paris',
+                ], 200),
+            ]);
+
+            $rateLimitKey = 'statamic_analytics_geo_ratelimit_' . $now->format('Y-m-d H:i');
+
+            // Deux IPs différentes → deux cache miss → deux appels au rate limiter.
+            (new GeolocationService())->lookup('1.2.3.4');
+            $this->assertSame(1, Cache::get($rateLimitKey));
+
+            (new GeolocationService())->lookup('5.6.7.8');
+            $this->assertSame(2, Cache::get($rateLimitKey));
+        } finally {
+            Carbon::setTestNow(null);
+        }
+    }
+
+    #[Test]
+    public function test_ip_api_rate_limit_leve_exception_si_verrou_indisponible(): void
+    {
+        config([
+            'statamic-analytics.geolocation.provider'          => 'ip-api',
+            'statamic-analytics.geolocation.ip_api.rate_limit' => 45,
+        ]);
+        Http::fake();
+
+        // Acquérir le verrou de rate limit avant l'appel pour simuler la contention.
+        // NB : pas de Carbon::setTestNow() ici — le geler bloquerait l'elapsed time
+        // de block() qui deviendrait toujours 0 et bouclerait indéfiniment.
+        $lockKey = 'statamic-analytics:ratelimit-lock:' . now()->format('Y-m-d H:i');
+        $lock = Cache::lock($lockKey, 5);
+        $lock->get();
+
+        try {
+            $this->expectException(\Illuminate\Contracts\Cache\LockTimeoutException::class);
+            // Nouvelle IP non-cachée : force l'entrée dans lookupViaIpApi().
+            (new GeolocationService())->lookup('203.0.113.1');
+        } finally {
+            $lock->release();
+        }
+    }
+
     // -------------------------------------------------------------------------
     // 7. Provider disabled et rétrocompatibilité clé booléenne enabled
     // -------------------------------------------------------------------------

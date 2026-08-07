@@ -17,7 +17,8 @@ return [
 
     // Boutons d'en-tête
     'refresh_data' => 'Actualiser',
-    'export_data'  => 'Exporter',
+    'export_data'         => 'Exporter',
+    'export_gdpr_warning' => "Cet export contient des adresses IP en clair et d'autres données personnelles. Continuer ?",
     'settings'     => 'Paramètres',
 
     // Panneau de paramètres

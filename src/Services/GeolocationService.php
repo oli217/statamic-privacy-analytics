@@ -53,19 +53,30 @@ class GeolocationService
     protected function lookupViaIpApi(string $ip): array
     {
         $rateLimitKey = 'statamic_analytics_geo_ratelimit';
+        $currentMinute = now()->format('Y-m-d H:i');
+        $lockKey = 'statamic-analytics:ratelimit-lock:' . $currentMinute;
+
         $rateLimit = config(
             'statamic-analytics.geolocation.ip_api.rate_limit',
             config('statamic-analytics.geolocation.rate_limit', 45)
         );
-        $currentMinute = now()->format('Y-m-d H:i');
-        $requestCount = Cache::get($rateLimitKey . '_' . $currentMinute, 0);
 
-        if ($requestCount >= $rateLimit) {
+        // Verrou atomique : contrairement aux stats (best-effort), le rate limiting
+        // protège un service tiers. On laisse LockTimeoutException remonter plutôt
+        // que de risquer un dépassement silencieux de la limite.
+        $allowed = Cache::lock($lockKey, 5)->block(2, function () use ($rateLimitKey, $currentMinute, $rateLimit) {
+            $requestCount = Cache::get($rateLimitKey . '_' . $currentMinute, 0);
+            if ($requestCount >= $rateLimit) {
+                return false;
+            }
+            Cache::put($rateLimitKey . '_' . $currentMinute, $requestCount + 1, 60);
+            return true;
+        });
+
+        if ($allowed === false) {
             Log::warning('StatamicAnalytics: ip-api rate limit reached.');
             return $this->emptyResult();
         }
-
-        Cache::put($rateLimitKey . '_' . $currentMinute, $requestCount + 1, 60);
 
         $data = null;
         try {

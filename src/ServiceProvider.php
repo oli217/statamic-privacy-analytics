@@ -159,7 +159,7 @@ class ServiceProvider extends AddonServiceProvider
                 ));
 
                 if (!File::exists($geoipDir)) {
-                    File::makeDirectory($geoipDir, 0775, true);
+                    File::makeDirectory($geoipDir, config('statamic-analytics.cache.file.permissions.directory', 0755), true);
                 }
             }
         } catch (\Exception $e) {

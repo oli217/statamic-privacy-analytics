@@ -621,6 +621,9 @@ async function resetGeoStats() {
 }
 
 function exportData() {
+    if (!window.confirm(t('export_gdpr_warning'))) {
+        return
+    }
     const params = new URLSearchParams({ range: dateRange.value })
     if (dateRange.value === 'custom' && startDate.value && endDate.value) {
         params.append('start_date', startDate.value)
