@@ -263,6 +263,71 @@ class GeolocationServiceTest extends TestCase
     // 8. Cache — un seul appel HTTP pour deux lookups identiques
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // 9. trackLookup avec verrou — non-régression et dégradation propre
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function test_trackLookup_incremente_correctement_hors_concurrence(): void
+    {
+        config(['statamic-analytics.geolocation.provider' => 'ip-api']);
+        Http::fake([
+            'ip-api.com/*' => Http::response([
+                'status'      => 'success',
+                'countryCode' => 'FR',
+                'country'     => 'France',
+                'city'        => 'Paris',
+            ], 200),
+        ]);
+
+        $service = new GeolocationService();
+        $service->lookup('8.8.8.8');
+        $service->lookup('8.8.4.4');
+
+        $statsKey = 'statamic_analytics_geolocation_stats_' . now()->format('Y-m-d');
+        $stats = Cache::get($statsKey);
+
+        $this->assertSame(2, $stats['total_lookups']);
+        $this->assertCount(2, $stats['unique_ips']);
+    }
+
+    #[Test]
+    public function test_trackLookup_ignore_proprement_si_verrou_indisponible(): void
+    {
+        config(['statamic-analytics.geolocation.provider' => 'ip-api']);
+        Http::fake([
+            'ip-api.com/*' => Http::response([
+                'status'      => 'success',
+                'countryCode' => 'DE',
+                'country'     => 'Germany',
+                'city'        => 'Berlin',
+            ], 200),
+        ]);
+
+        $lockKey = 'statamic-analytics:geo-stats-lock:' . now()->format('Y-m-d');
+        $lock = Cache::lock($lockKey, 5);
+        $lock->get();
+
+        try {
+            // Le lookup géo lui-même doit réussir malgré le verrou indisponible.
+            $result = (new GeolocationService())->lookup('8.8.8.8');
+
+            $this->assertSame([
+                'country_code' => 'DE',
+                'country_name' => 'Germany',
+                'city'         => 'Berlin',
+            ], $result);
+
+            // Les statistiques ne doivent PAS être mises à jour (verrou non acquis).
+            $statsKey = 'statamic_analytics_geolocation_stats_' . now()->format('Y-m-d');
+            $this->assertNull(Cache::get($statsKey));
+        } finally {
+            $lock->release();
+        }
+    }
+
+
+
     #[Test]
     public function test_lookup_repete_meme_ip_un_seul_appel_http(): void
     {

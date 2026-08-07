@@ -150,27 +150,40 @@ class GeolocationService
     protected function trackLookup(string $ip, bool $success): void
     {
         $statsKey = 'statamic_analytics_geolocation_stats_' . now()->format('Y-m-d');
-        $stats = Cache::get($statsKey, [
-            'total_lookups'      => 0,
-            'successful_lookups' => 0,
-            'failed_lookups'     => 0,
-            'unique_ips'         => [],
-            'last_lookup'        => null,
-        ]);
+        $lockKey  = 'statamic-analytics:geo-stats-lock:' . now()->format('Y-m-d');
 
-        $stats['total_lookups']++;
-        $success ? $stats['successful_lookups']++ : $stats['failed_lookups']++;
+        try {
+            Cache::lock($lockKey, 5)->block(2, function () use ($statsKey, $ip, $success) {
+                $stats = Cache::get($statsKey, [
+                    'total_lookups'      => 0,
+                    'successful_lookups' => 0,
+                    'failed_lookups'     => 0,
+                    'unique_ips'         => [],
+                    'last_lookup'        => null,
+                ]);
 
-        $ipHash = hash_hmac('sha256', $ip, config('app.key'));
-        if (!in_array($ipHash, $stats['unique_ips'], true)) {
-            $stats['unique_ips'][] = $ipHash;
+                $stats['total_lookups']++;
+                $success ? $stats['successful_lookups']++ : $stats['failed_lookups']++;
+
+                $ipHash = hash_hmac('sha256', $ip, config('app.key'));
+                if (!in_array($ipHash, $stats['unique_ips'], true)) {
+                    $stats['unique_ips'][] = $ipHash;
+                }
+
+                $stats['last_lookup'] = now()->toDateTimeString();
+
+                // TTL fixe : la clé expire naturellement après 32 jours, bornant
+                // la mémoire dans le temps (pas de croissance indéfinie de unique_ips).
+                Cache::put($statsKey, $stats, now()->addDays(32));
+            });
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            // Best-effort : ces statistiques sont opérationnelles, pas critiques
+            // (aucune UI ne les affiche actuellement) — on préfère ignorer un
+            // point de mesure plutôt que bloquer la résolution géographique.
+            Log::info('StatamicAnalytics: verrou stats géo non acquis, mise à jour ignorée.', [
+                'lock_key' => $lockKey,
+            ]);
         }
-
-        $stats['last_lookup'] = now()->toDateTimeString();
-
-        // TTL fixe : la clé expire naturellement après 32 jours, bornant
-        // la mémoire dans le temps (pas de croissance indéfinie de unique_ips).
-        Cache::put($statsKey, $stats, now()->addDays(32));
     }
 
     public static function getStats(int $days = 30): array
