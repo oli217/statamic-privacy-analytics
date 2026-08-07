@@ -108,28 +108,20 @@ composer require oliweb/statamic-privacy-analytics:^2.0
 
 ## Upgrading to 3.0
 
-**Breaking change (destructive)** : une politique de rétention des IP est désormais
-active par défaut. Les adresses IP et user-agents des pages vues de plus de 90 jours
-seront automatiquement et irréversiblement anonymisés (mis à NULL) par une commande
-planifiée quotidienne.
+**Breaking change (destructive)**: an IP retention policy is now active by default. IP addresses and user-agents for page views older than 90 days will be automatically and irreversibly anonymised (set to NULL) by a daily scheduled command.
 
 #### Who is affected?
 
-Toute installation existante, dès la mise à jour vers 3.0 et le premier passage du
-scheduler après upgrade.
+All existing installations, from the moment they update to 3.0 and the scheduler runs for the first time after the upgrade.
 
 #### What does NOT change
 
-- Les statistiques de fréquentation (visites, pages vues, visiteurs uniques) restent
-  intactes : elles reposent sur `visitor_id`/`session_id`, pas sur `ip_address`.
-- Les données de géolocalisation déjà résolues (`country_code`, `city`) sur les pages
-  vues existantes ne sont **pas** affectées — seules les colonnes `ip_address` et
-  `user_agent` sont mises à NULL.
+- Visit statistics (visits, page views, unique visitors) remain intact: they rely on `visitor_id`/`session_id`, not on `ip_address`.
+- Already-resolved geolocation data (`country_code`, `city`) on existing page views are **not** affected — only the `ip_address` and `user_agent` columns are set to NULL.
 
 #### Database migration
 
-La colonne `ip_address` devient nullable. Exécutez les migrations après la mise à
-jour du package :
+The `ip_address` column becomes nullable. Run migrations after updating the package:
 
 ```bash
 php artisan migrate
@@ -137,48 +129,47 @@ php artisan migrate
 
 #### Options
 
-**Option A — Conserver le comportement par défaut (recommandé, conforme RGPD/nLPD) :**
-Rien à faire. La rétention de 90 jours s'applique automatiquement.
+**Option A — Keep the default behaviour (recommended):**
+Nothing to do. The 90-day retention applies automatically.
 
-**Option B — Ajuster la durée de rétention :**
+**Option B — Adjust the retention window:**
 ```
 # .env
 ANALYTICS_IP_RETENTION_DAYS=30
 ```
-Ou dans `config/statamic-analytics.php` (après `vendor:publish`) :
+Or explicitly in `config/statamic-analytics.php` (after `vendor:publish`):
 ```php
 'privacy' => [
     'ip_retention_days' => 30,
 ],
 ```
 
-**Option C — Désactiver l'anonymisation automatique (déconseillé) :**
+**Option C — Disable automatic anonymisation (not recommended):**
 ```
 # .env
 ANALYTICS_IP_RETENTION_DAYS=null
 ```
-> ⚠️ Le mot `null` doit être écrit littéralement, sans guillemets. Une valeur vide
-> (`ANALYTICS_IP_RETENTION_DAYS=`) est interprétée par Laravel comme une chaîne
-> vide, pas comme `null`, et ne désactive PAS l'anonymisation — elle provoquerait
-> au contraire une anonymisation immédiate de la quasi-totalité des données
-> existantes au prochain passage du scheduler.
+> ⚠️ The word `null` must be written literally, without quotes. A blank value
+> (`ANALYTICS_IP_RETENTION_DAYS=`) is interpreted by Laravel as an empty string,
+> not as `null`, and would NOT disable anonymisation — it would instead trigger
+> immediate anonymisation of virtually all existing data on the next scheduler run.
 
-Ou explicitement dans la config :
+Or explicitly in the config:
 ```php
 'privacy' => [
     'ip_retention_days' => null,
 ],
 ```
-> ⚠️ La conservation illimitée des IPs est non recommandée et peut être difficile à justifier selon les exigences applicables à votre déploiement. N'activez cette option qu'en connaissance de cause.
+> ⚠️ Unlimited IP retention is not recommended and may be difficult to justify depending on the requirements applicable to your deployment. Only enable this option knowingly.
 
-#### Anonymisation manuelle
+#### Manual anonymisation
 
-Pour déclencher une anonymisation immédiate (sans attendre le scheduler) :
+To trigger immediate anonymisation (without waiting for the scheduler):
 ```bash
-# Prévisualiser les lignes concernées
+# Preview affected rows
 php artisan analytics:anonymize-ips --dry-run
 
-# Anonymiser
+# Run anonymisation
 php artisan analytics:anonymize-ips
 ```
 
@@ -196,58 +187,58 @@ composer require oliweb/statamic-privacy-analytics:^3.0
 
 ## Upgrading to 4.0
 
-### Breaking change : purge définitive des événements bruts activée par défaut
+### Breaking change: permanent raw event purge enabled by default
 
-À partir de la v4.0, une nouvelle commande planifiée quotidienne (`analytics:purge-raw-events`) supprime **définitivement et irréversiblement** les lignes de `statamic_analytics_page_views` de plus de 180 jours. C'est une suppression de lignes, pas une anonymisation : les données ne sont pas récupérables.
+Starting with v4.0, a new daily scheduled command (`analytics:purge-raw-events`) **permanently and irreversibly** deletes rows from `statamic_analytics_page_views` older than 180 days. This is a row deletion, not anonymisation: the data is not recoverable.
 
 #### Who is affected?
 
-Toute installation existante avec des données de plus de 180 jours, dès le premier passage du scheduler après la mise à jour.
+All existing installations with data older than 180 days, from the first scheduler run after the update.
 
-#### Ce qui est préservé indéfiniment
+#### What is preserved indefinitely
 
-Les agrégats quotidiens dans `statamic_analytics_aggregates` **ne sont pas affectés** par la purge. La dimension `_overview` (nouvelle en v4.0) conserve par jour :
-- Visites totales, visiteurs uniques, pages vues uniques, visiteurs récurrents
+Daily aggregates in `statamic_analytics_aggregates` are **not affected** by the purge. The `_overview` dimension (new in v4.0) preserves per-day totals:
+- Total visits, unique visitors, unique page views, returning visitors
 
-Les dimensions existantes (pays, appareil, navigateur, plateforme) sont également préservées.
+Existing dimensions (country, device, browser, platform) are also preserved.
 
-#### Ce qui disparaît au-delà de la fenêtre de rétention brute
+#### What does NOT survive beyond the raw retention window
 
-Les widgets suivants afficheront des données vides pour les dates antérieures à la fenêtre :
-pages individuelles, sources de trafic, referrers, heatmap horaire, profondeur de session, temps moyen par page, flux utilisateurs.
+The following widgets will show empty data for dates older than the retention window:
+individual pages, traffic sources, referrers, hourly activity heatmap, session depth, avg. time on page, user flow.
 
 #### Options
 
-**Option A — Conserver le comportement par défaut (recommandé) :**
-Rien à faire. La rétention brute de 180 jours s'applique automatiquement.
+**Option A — Keep the default behaviour (recommended):**
+Nothing to do. The 180-day raw retention applies automatically.
 
-**Option B — Ajuster la durée :**
+**Option B — Adjust the retention window:**
 ```
 # .env
 ANALYTICS_RAW_RETENTION_DAYS=365
 ```
 
-**Option C — Désactiver la purge automatique (déconseillé) :**
+**Option C — Disable automatic purge (not recommended):**
 ```
 # .env
 ANALYTICS_RAW_RETENTION_DAYS=null
 ```
-> ⚠️ Le mot `null` doit être écrit littéralement. Une valeur vide (`ANALYTICS_RAW_RETENTION_DAYS=`) est lue par Laravel comme une chaîne vide et non comme `null` — la garde défensive la traite comme une rétention illimitée, ce qui est le comportement attendu, mais l'intention reste ambiguë à la lecture du fichier `.env`.
+> ⚠️ The word `null` must be written literally. A blank value (`ANALYTICS_RAW_RETENTION_DAYS=`) is read by Laravel as an empty string rather than `null` — the defensive guard treats this as unlimited retention, which is the intended fallback, but the intent remains ambiguous when reading the `.env` file.
 
-#### Avant de mettre à jour
+#### Before updating
 
-Faire un `--dry-run` pour évaluer l'impact sur vos données existantes :
+Run a `--dry-run` to assess the impact on your existing data:
 ```bash
 php artisan analytics:purge-raw-events --dry-run
 ```
 
-### Autres changements v4.0
+### Other changes in v4.0
 
-- **Route CP renommée** : `statamic-analytics.clear-cache` → `statamic-analytics.reset-stats` (depuis v3.2.0, inclus ici pour signaler le changement d'API).
-- **`AnalyticsSettingsController` supprimé** : contrôleur sans route ni vue, résidu du fork.
-- **ip-api** : `file_get_contents` remplacé par la façade `Http` (timeout 2 s / connect 1 s).
-- **Session `visited_pages` bornée** à 20 entrées maximum.
-- **`_overview` dans les agrégats** : `analytics:process` écrit désormais un résumé journalier sans groupement (dimension `_overview`, dimension_value `_all`).
+- **CP route renamed**: `statamic-analytics.clear-cache` → `statamic-analytics.reset-stats` (since v3.2.0, noted here to flag the API change).
+- **`AnalyticsSettingsController` removed**: controller with no route or view, leftover from the fork.
+- **ip-api**: `file_get_contents` replaced by the `Http` facade (timeout 2 s / connect 1 s).
+- **`visited_pages` session capped** at 20 entries maximum.
+- **`_overview` in aggregates**: `analytics:process` now writes a daily summary without grouping (dimension `_overview`, dimension_value `_all`).
 
 ### Composer constraint
 

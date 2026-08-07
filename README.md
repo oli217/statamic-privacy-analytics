@@ -182,13 +182,13 @@ return [
 ];
 ```
 
-### Notes de configuration
+### Configuration notes
 
-**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address`, `user_agent` et `user_id` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique — non recommandé, et une conservation illimitée peut être difficile à justifier selon les exigences applicables à votre déploiement. Voir [IP retention](#ip-retention).
+**`privacy.ip_retention_days`** — Number of days `ip_address`, `user_agent`, and `user_id` are kept before anonymisation. `null` disables automatic anonymisation — not recommended, and unlimited retention may be difficult to justify depending on the requirements applicable to your deployment. See [IP retention](#ip-retention).
 
-**`enable_debugging`** — Active les logs détaillés du middleware de tracking. À ne laisser à `true` qu'en développement.
+**`enable_debugging`** — Enables detailed logging in the tracking middleware. Leave this `false` outside of development.
 
-**Rétrocompatibilité `geolocation.provider`** — Si la clé `provider` est absente du fichier publié (config générée avant cette version), l'addon se rabat sur l'ancienne clé booléenne `enabled` : `enabled=true` → `ip-api`, `enabled=false` → `disabled`. Migrer explicitement vers `provider` lors du prochain `vendor:publish --force`.
+**`geolocation.provider` backward compatibility** — If the `provider` key is absent from the published config (generated before this version), the addon falls back to the legacy boolean key `enabled`: `enabled=true` → `ip-api`, `enabled=false` → `disabled`. Migrate explicitly to `provider` on your next `vendor:publish --force`.
 
 ---
 
@@ -229,14 +229,14 @@ ANALYTICS_GEO_PROVIDER=ip-api      # external HTTP, no credentials needed
    php artisan analytics:update-geoip
    ```
 
-> **Important :** `analytics:update-geoip` n'est **pas** planifié automatiquement par l'addon — c'est un choix délibéré. Déclencher automatiquement un téléchargement vers un service externe est une décision d'infrastructure qui appartient à chaque projet, pas à un addon. Ajoutez-le vous-même dans `routes/console.php` selon vos préférences de fréquence :
+> **Important:** `analytics:update-geoip` is **not** scheduled automatically by the addon — this is a deliberate choice. Triggering an automatic download to an external service is an infrastructure decision that belongs to each project, not to an addon. Add it yourself in `routes/console.php` at the frequency you prefer:
 
 ```php
 // routes/console.php
 Schedule::command('analytics:update-geoip')->weekly()->tuesdays();
 ```
 
-MaxMind met à jour GeoLite2 chaque mardi — un déclenchement hebdomadaire le mardi est recommandé.
+MaxMind updates GeoLite2 every Tuesday — a weekly schedule on Tuesday is recommended.
 
 ---
 
@@ -349,7 +349,7 @@ The `analytics:purge-failed-jobs` command automatically removes stale `TrackPage
 If queue dispatch fails (misconfigured connection, driver unavailable), the middleware catches the exception, logs an error, and falls back to synchronous recording. This does not cover post-dispatch failures (worker crash, job exhausting its retries) — those appear in `failed_jobs` and are handled by `analytics:purge-failed-jobs`:
 
 ```
-StatamicAnalytics: échec du dispatch en file d'attente, retour en écriture synchrone
+StatamicAnalytics: queue dispatch failed, falling back to synchronous recording
 ```
 
 ---
@@ -456,6 +456,15 @@ Scheduler (daily)
            └─ UPDATE statamic_analytics_page_views
               SET ip_address = NULL, user_agent = NULL, user_id = NULL
               WHERE visited_at < now() - ip_retention_days
+
+    └─ analytics:purge-raw-events
+           └─ DELETE FROM statamic_analytics_page_views
+              WHERE visited_at < now() - raw_retention_days
+
+    └─ analytics:purge-failed-jobs
+           └─ DELETE FROM failed_jobs
+              WHERE failed_at < now() - ip_retention_days
+              AND payload LIKE '%TrackPageViewJob%'
 ```
 
 Geolocation (IP → country/city) is resolved by the configured provider — ip-api.com (HTTP, 45 req/min free tier) or MaxMind GeoLite2 (local `.mmdb` file, no external calls). Results are cached for 24 hours. With `provider: disabled`, country/city fields stay `null` and no IP leaves the server.
