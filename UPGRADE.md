@@ -169,8 +169,7 @@ Ou explicitement dans la config :
     'ip_retention_days' => null,
 ],
 ```
-> ⚠️ La conservation illimitée des IPs est non conforme au RGPD/nLPD par défaut.
-> N'activez cette option qu'en connaissance de cause et avec une base légale appropriée.
+> ⚠️ La conservation illimitée des IPs est non recommandée et peut être difficile à justifier selon les exigences applicables à votre déploiement. N'activez cette option qu'en connaissance de cause.
 
 #### Anonymisation manuelle
 

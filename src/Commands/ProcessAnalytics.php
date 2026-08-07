@@ -10,8 +10,9 @@ use Carbon\Carbon;
 
 class ProcessAnalytics extends Command
 {
-    protected $signature = 'analytics:process';
-    protected $description = 'Recalculate analytics aggregates from page_views for the last 2 days';
+    protected $signature = 'analytics:process
+                            {--days=2 : Nombre de jours à traiter en partant d\'aujourd\'hui (2 = aujourd\'hui + hier, comportement par défaut inchangé)}';
+    protected $description = 'Recalculate analytics aggregates from page_views for the last N days (default: 2)';
 
     public function handle()
     {
@@ -25,10 +26,11 @@ class ProcessAnalytics extends Command
                 return;
             }
 
-            $dates = [
-                Carbon::today()->toDateString(),
-                Carbon::yesterday()->toDateString(),
-            ];
+            $days = max(1, (int) $this->option('days'));
+            $dates = [];
+            for ($i = 0; $i < $days; $i++) {
+                $dates[] = Carbon::today()->subDays($i)->toDateString();
+            }
 
             foreach ($dates as $date) {
                 DB::transaction(function () use ($date) {

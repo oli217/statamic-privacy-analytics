@@ -179,7 +179,40 @@ class AnalyticsDashboardControllerTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // 5. Période sans données — pas d'exception, totaux à zéro
+    // 5. Export CSV — neutralisation des valeurs de type formule
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function test_export_neutralise_les_valeurs_de_type_formule(): void
+    {
+        // Insérer une ligne avec un champ commençant par '=' (injection de formule)
+        $this->insertPageView($this->ts(10), ['browser' => '=1+1']);
+
+        $controller = new AnalyticsDashboardController();
+        $request = Request::create('/export', 'GET', [
+            'range'      => 'custom',
+            'start_date' => '2024-06-15',
+            'end_date'   => '2024-06-16',
+        ]);
+
+        ob_start();
+        $controller->export($request)->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString(
+            "'=1+1",
+            $csv,
+            'Les valeurs commençant par "=" doivent être préfixées d\'une apostrophe dans le CSV.'
+        );
+        $this->assertStringNotContainsString(
+            ',=1+1',
+            $csv,
+            'La valeur "=1+1" ne doit pas apparaître non préfixée dans le CSV.'
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. Période sans données — pas d'exception, totaux à zéro
     // -------------------------------------------------------------------------
 
     #[Test]

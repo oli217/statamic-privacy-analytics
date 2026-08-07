@@ -184,7 +184,7 @@ return [
 
 ### Notes de configuration
 
-**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address`, `user_agent` et `user_id` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique (non conforme RGPD/nLPD par défaut). Voir [IP retention](#ip-retention).
+**`privacy.ip_retention_days`** — Nombre de jours pendant lesquels `ip_address`, `user_agent` et `user_id` sont conservés avant anonymisation. `null` désactive l'anonymisation automatique — non recommandé, et une conservation illimitée peut être difficile à justifier selon les exigences applicables à votre déploiement. Voir [IP retention](#ip-retention).
 
 **`enable_debugging`** — Active les logs détaillés du middleware de tracking. À ne laisser à `true` qu'en développement.
 
@@ -276,6 +276,14 @@ This runs automatically via Laravel Scheduler at the frequency defined in config
 ```bash
 * * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+If the scheduler was interrupted for several days, use `--days` to backfill the missing aggregates:
+
+```bash
+php artisan analytics:process --days=7
+```
+
+The default (`--days=2`, today + yesterday) is unchanged for automatic scheduling.
 
 ---
 

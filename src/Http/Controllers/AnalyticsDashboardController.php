@@ -456,19 +456,28 @@ class AnalyticsDashboardController
 
             foreach ($data as $row) {
                 fputcsv($output, [
-                    $row->page_url,
-                    $row->ip_address,
-                    $row->country_name,
-                    $row->city,
-                    $row->device_type,
-                    $row->browser,
-                    $row->platform,
-                    $row->visited_at
+                    $this->sanitizeCsvField($row->page_url),
+                    $this->sanitizeCsvField($row->ip_address),
+                    $this->sanitizeCsvField($row->country_name),
+                    $this->sanitizeCsvField($row->city),
+                    $this->sanitizeCsvField($row->device_type),
+                    $this->sanitizeCsvField($row->browser),
+                    $this->sanitizeCsvField($row->platform),
+                    $this->sanitizeCsvField($row->visited_at),
                 ]);
             }
 
             fclose($output);
         }, 'analytics-export-' . Carbon::now()->format('Y-m-d') . '.csv');
+    }
+
+    private function sanitizeCsvField($value): string
+    {
+        $value = (string) $value;
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     public function getGeolocationStats()

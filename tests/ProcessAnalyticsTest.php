@@ -201,7 +201,40 @@ class ProcessAnalyticsTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // 6. Le verrou empêche l'exécution concurrente
+    // 6. --days recalcule plusieurs jours en arrière
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function test_option_days_recalcule_plusieurs_jours_en_arriere(): void
+    {
+        // Insérer une page view sur chacun des 4 derniers jours
+        for ($i = 0; $i < 4; $i++) {
+            $this->insertPageView(Carbon::today()->subDays($i), [
+                'country_code' => 'CH',
+                'is_new_visitor' => true,
+            ]);
+        }
+
+        Artisan::call('analytics:process', ['--days' => 4]);
+
+        for ($i = 0; $i < 4; $i++) {
+            $date = Carbon::today()->subDays($i)->toDateString();
+            $aggregate = DB::table('statamic_analytics_aggregates')
+                ->where('type', 'daily')
+                ->where('date', $date)
+                ->where('dimension', '_overview')
+                ->first();
+
+            $this->assertNotNull(
+                $aggregate,
+                "L'agrégat _overview pour la date {$date} doit exister avec --days=4."
+            );
+            $this->assertSame(1, (int) $aggregate->total_visits);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. Le verrou empêche l'exécution concurrente
     // -------------------------------------------------------------------------
 
     #[Test]
