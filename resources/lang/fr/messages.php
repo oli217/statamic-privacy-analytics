@@ -5,6 +5,9 @@ return [
     // Navigation
     'nav_item' => 'Analytiques',
 
+    // Éditeur de rôles CP — libellé du groupe de permissions
+    'permission_group' => 'Privacy Analytics',
+
     // Sélecteur de plage de dates
     'last_24_hours' => 'Dernières 24 heures',
     'last_7_days'   => '7 derniers jours',

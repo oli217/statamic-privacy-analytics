@@ -86,15 +86,15 @@ class ServiceProvider extends AddonServiceProvider
             ])]);
         }
 
-        // Register CP permissions
-        Permission::register('analytics.view', fn ($p) => $p
-            ->label('View analytics dashboard')
-            ->group('analytics')
-        );
-        Permission::register('analytics.manage', fn ($p) => $p
-            ->label('Export and manage analytics data')
-            ->group('analytics')
-        );
+        // Register CP permissions under a named group
+        Permission::group('statamic-analytics', __('statamic-analytics::messages.permission_group'), function () {
+            Permission::register('analytics.view', fn ($p) => $p
+                ->label('View analytics dashboard')
+            );
+            Permission::register('analytics.manage', fn ($p) => $p
+                ->label('Export and manage analytics data')
+            );
+        });
 
         // Register the nav item — visible only to users with analytics.view
         Nav::extend(function ($nav) {

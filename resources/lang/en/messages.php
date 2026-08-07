@@ -5,6 +5,9 @@ return [
     // Navigation
     'nav_item' => 'Analytics',
 
+    // CP role editor — permission group label
+    'permission_group' => 'Privacy Analytics',
+
     // Date range selector
     'last_24_hours' => 'Last 24 Hours',
     'last_7_days'   => 'Last 7 Days',
