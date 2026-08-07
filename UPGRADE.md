@@ -1,5 +1,36 @@
 # Upgrade Guide
 
+## Upgrading to 4.4
+
+### Breaking change : CP permissions now required for non-super-admin users
+
+Before v4.4, all authenticated CP users could access the analytics routes. From v4.4 onward, access is gated by two explicit permissions:
+
+| Permission slug | Routes covered |
+|---|---|
+| `analytics.view` | Dashboard, data, geo-stats, real-time |
+| `analytics.manage` | CSV export, geolocation stats reset |
+
+**Super administrators are not affected** — they bypass permission checks automatically.
+
+#### Who is affected?
+
+Any CP user who is **not** a super administrator and who previously accessed the analytics dashboard. After updating, those users will receive a `403 Forbidden` response until one of the permissions above is assigned to their role.
+
+#### How to grant access
+
+1. Go to **CP → Users → Roles** and open (or create) the role assigned to your analytics users.
+2. Under the **Analytics** permission group, tick **View analytics dashboard** and/or **Export and manage analytics data**.
+3. Save the role.
+
+Refer to [Statamic's documentation on roles and permissions](https://statamic.dev/users#permissions) for details on creating and assigning roles.
+
+#### Minimal read-only access
+
+If you only want users to see the dashboard without being able to export data or reset stats, assign `analytics.view` only. The export button and reset button will be hidden in the UI, and the corresponding routes return `403` server-side.
+
+---
+
 ## Upgrading to 2.0
 
 ### Breaking change : default geolocation provider changed from `ip-api` to `maxmind`

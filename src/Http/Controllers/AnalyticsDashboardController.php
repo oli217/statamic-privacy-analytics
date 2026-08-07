@@ -28,6 +28,7 @@ class AnalyticsDashboardController
                 'processingFrequency'=> config('statamic-analytics.processing.frequency', 15),
                 'geoProvider'        => $resolvedProvider,
                 'geoWarning'         => $geoWarning,
+                'canManage'          => auth()->user()?->can('analytics.manage') ?? false,
                 'routes' => [
                     'data'       => cp_route('statamic-analytics.data'),
                     'export'     => cp_route('statamic-analytics.export'),

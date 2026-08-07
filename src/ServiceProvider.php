@@ -5,6 +5,7 @@ namespace Oliweb\StatamicAnalytics;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\File;
 use Statamic\Facades\CP\Nav;
+use Statamic\Facades\Permission;
 use Statamic\Providers\AddonServiceProvider;
 
 class ServiceProvider extends AddonServiceProvider
@@ -85,12 +86,23 @@ class ServiceProvider extends AddonServiceProvider
             ])]);
         }
 
-        // Register the nav item
+        // Register CP permissions
+        Permission::register('analytics.view', fn ($p) => $p
+            ->label('View analytics dashboard')
+            ->group('analytics')
+        );
+        Permission::register('analytics.manage', fn ($p) => $p
+            ->label('Export and manage analytics data')
+            ->group('analytics')
+        );
+
+        // Register the nav item — visible only to users with analytics.view
         Nav::extend(function ($nav) {
             $nav->create(__('statamic-analytics::messages.nav_item'))
                 ->section('Tools')
                 ->route('statamic-analytics.index')
-                ->icon('chart-monitoring-indicator');
+                ->icon('chart-monitoring-indicator')
+                ->can('analytics.view');
         });
 
         // Load migrations

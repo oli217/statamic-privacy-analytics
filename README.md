@@ -72,6 +72,19 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - **HTML-only tracking** — only responses with a `200 OK` status **and** a `text/html` Content-Type are recorded. Automated scans (404s), static assets served by third-party addons (`.js`, `.wasm`, etc.), and API JSON responses are silently ignored without requiring a manual exclusion list.
 - **Session-safe** — the tracking middleware never invalidates or regenerates the session. It only adds its own keys (`analytics_session_started`, `visitor_id`, `visited_pages`, `last_visit_date`, `last_visit_hour`); all pre-existing session data (cart, auth, form state, etc.) is left intact.
 
+### CP Permissions
+
+Two granular permissions gate access to the analytics control panel routes. They are assignable to any Statamic role via **CP → Users → Roles**.
+
+| Permission | Slug | What it covers |
+|---|---|---|
+| View analytics dashboard | `analytics.view` | Dashboard, aggregated data, geolocation stats, real-time visitors |
+| Export and manage analytics data | `analytics.manage` | CSV export (contains plain-text IPs), geolocation stats reset |
+
+**Super administrators** bypass all permission checks automatically — they always have full access regardless of role configuration.
+
+Users who hold `analytics.view` but not `analytics.manage` will see the dashboard and all statistics. The Export CSV button and the geolocation stats reset button are hidden in the UI (client-side UX only — the routes themselves are protected server-side independently).
+
 ---
 
 ## Requirements
