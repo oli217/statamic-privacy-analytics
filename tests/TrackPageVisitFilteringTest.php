@@ -2,10 +2,10 @@
 
 namespace Oliweb\StatamicAnalytics\Tests;
 
+use DeviceDetector\DeviceDetector;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Queue;
-use Jenssegers\Agent\Agent;
 use Oliweb\StatamicAnalytics\Jobs\TrackPageViewJob;
 use Oliweb\StatamicAnalytics\Middleware\TrackPageVisit;
 use PHPUnit\Framework\Attributes\Test;
@@ -70,23 +70,17 @@ class TrackPageVisitFilteringTest extends TestCase
     }
 
     /**
-     * Instancie TrackPageVisit en substituant l'Agent via réflexion.
+     * Instancie TrackPageVisit en injectant un DeviceDetector pré-configuré.
      *
-     * La réflexion est limitée à l'écriture de la propriété protected $agent ;
-     * les méthodes protected du middleware (shouldTrack, isTrackableResponse)
-     * ne sont jamais appelées directement — cohérent avec le pattern du repo.
+     * Le détecteur est parsé avant injection : handle() détecte isParsed() === true
+     * et n'écrase pas le user-agent de test avec celui de la requête.
      */
     private function middlewareWithAgent(string $userAgent): TrackPageVisit
     {
-        $middleware = new TrackPageVisit();
+        $dd = new DeviceDetector($userAgent);
+        $dd->parse();
 
-        $agent = new Agent();
-        $agent->setUserAgent($userAgent);
-
-        $prop = new \ReflectionProperty($middleware, 'agent');
-        $prop->setValue($middleware, $agent);
-
-        return $middleware;
+        return new TrackPageVisit($dd);
     }
 
     private function fakeUser(): \Illuminate\Contracts\Auth\Authenticatable

@@ -42,8 +42,8 @@
     "require": {
         "php": "^8.3",
         "statamic/cms": "^6.0",
-        "jenssegers/agent": "^2.6",
-        "geoip2/geoip2": "^3.0"
+        "geoip2/geoip2": "^3.0",
+        "matomo/device-detector": "^6.5"
     },
     "require-dev": {
         "orchestra/testbench": "^10.0"

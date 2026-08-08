@@ -3,10 +3,10 @@
 namespace Oliweb\StatamicAnalytics\Middleware;
 
 use Closure;
+use DeviceDetector\DeviceDetector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Jenssegers\Agent\Agent;
 use Carbon\Carbon;
 use Oliweb\StatamicAnalytics\Jobs\TrackPageViewJob;
 use Oliweb\StatamicAnalytics\Services\GeolocationService;
@@ -14,11 +14,11 @@ use Oliweb\StatamicAnalytics\Services\PageViewRecorder;
 
 class TrackPageVisit
 {
-    protected $agent;
+    protected DeviceDetector $deviceDetector;
 
-    public function __construct()
+    public function __construct(?DeviceDetector $deviceDetector = null)
     {
-        $this->agent = new Agent();
+        $this->deviceDetector = $deviceDetector ?? new DeviceDetector();
     }
 
     public static function getGeolocationStats(): array
@@ -36,6 +36,12 @@ class TrackPageVisit
         $response = $next($request);
 
         try {
+            // Configure le détecteur depuis la requête (ignoré si pré-configuré, ex: tests)
+            if (!$this->deviceDetector->isParsed()) {
+                $this->deviceDetector->setUserAgent($request->userAgent() ?? '');
+                $this->deviceDetector->parse();
+            }
+
             if ($this->shouldTrack($request) && $this->isTrackableResponse($response)) {
                 $now = now();
                 $today = $now->format('Y-m-d');
@@ -80,8 +86,8 @@ class TrackPageVisit
                     'ip_address'        => $ipAddress,
                     'user_agent'        => $request->userAgent(),
                     'device_type'       => $this->getDeviceType(),
-                    'browser'           => $this->agent->browser(),
-                    'platform'          => $this->agent->platform(),
+                    'browser'           => $this->deviceDetector->getClient('name'),
+                    'platform'          => $this->deviceDetector->getOs('name'),
                     'referrer_url'      => $this->sanitizeReferrer($request->header('referer')),
                     'user_id'           => auth()->id(),
                     'session_id'        => $request->session()->getId(),
@@ -169,7 +175,7 @@ class TrackPageVisit
             return false;
         }
 
-        if ($excludeBots && $this->agent->isRobot()) {
+        if ($excludeBots && $this->deviceDetector->isBot()) {
             return false;
         }
 
@@ -182,11 +188,11 @@ class TrackPageVisit
 
     protected function getDeviceType(): string
     {
-        if ($this->agent->isTablet()) {
+        if ($this->deviceDetector->isTablet()) {
             return 'tablet';
         }
 
-        if ($this->agent->isMobile()) {
+        if ($this->deviceDetector->isMobile()) {
             return 'mobile';
         }
 
