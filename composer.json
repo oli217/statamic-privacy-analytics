@@ -1,6 +1,6 @@
 {
     "name": "oliweb/statamic-privacy-analytics",
-    "description": "A powerful, efficient analytics solution for Statamic with real-time tracking, caching, and comprehensive dashboard visualization.",
+    "description": "Self-hosted, privacy-first analytics for Statamic. No third-party data transfer by default — MaxMind geolocation, configurable retention, granular CP permissions.",
     "type": "statamic-addon",
     "license": "MIT",
     "keywords": [
@@ -18,6 +18,23 @@
         "chartjs",
         "alpinejs"
     ],
+    "authors": [
+        {
+            "name": "OliWeb - Olivier Petrucciani",
+            "email": "info@oliweb.ch",
+            "homepage": "https://oliweb.ch"
+        }
+    ],
+    "funding": [
+        {
+            "type": "other",
+            "url": "https://donate.stripe.com/aFaaEW3Wq7TH2wLa5pf3a00"
+        }
+    ],
+    "support": {
+        "email": "info@oliweb.ch",
+        "github": "https://github.com/oliweb-ch"
+    },
     "autoload": {
         "psr-4": {
             "Oliweb\\StatamicAnalytics\\": "src"
@@ -31,7 +48,7 @@
     "extra": {
         "statamic": {
             "name": "Privacy Analytics",
-            "description": "A powerful, efficient analytics solution for Statamic with real-time tracking and comprehensive dashboard"
+            "description": "Self-hosted, privacy-first analytics for Statamic. No third-party data transfer by default — MaxMind geolocation, configurable retention, granular CP permissions."
         },
         "laravel": {
             "providers": [
