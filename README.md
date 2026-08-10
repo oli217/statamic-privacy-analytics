@@ -62,6 +62,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 ---
 
 ### Privacy & tracking
+> A non-technical summary of what data is collected, retained, and who can access it is available in [`docs/data-processing-overview.md`](docs/data-processing-overview.md) ([French version](docs/data-processing-overview.fr.md)) — useful to share directly with a client or their legal counsel.
 - Consent banner (disabled by default) with granular controls
 - Bot filtering
 - Configurable excluded paths and IPs
