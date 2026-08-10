@@ -2,22 +2,22 @@
 
 ## Upgrading to 4.5
 
-### Breaking change (discontinuité de données, pas de config) : bibliothèque de détection d'appareil
+### Breaking change (data discontinuity, no config change): device detection library
 
-La bibliothèque de détection d'appareil passe de **jenssegers/agent** (abandonnée, ne reconnaît plus les appareils mobiles récents depuis 2020) à **matomo/device-detector** (activement maintenue par l'équipe Matomo).
+The device detection library has been replaced from **jenssegers/agent** (abandoned since 2020, no longer recognises recent mobile devices) with **matomo/device-detector** (actively maintained by the Matomo team).
 
-#### Ce qui ne change pas
+#### What does NOT change
 
-- Les valeurs de `device_type` (`tablet` / `mobile` / `desktop`) sont strictement identiques.
-- Aucun changement de configuration, de commande ou de schéma de base de données.
+- `device_type` values (`tablet` / `mobile` / `desktop`) are strictly identical.
+- No configuration, command, or database schema changes.
 
-#### Ce qui peut différer
+#### What may differ
 
-Les valeurs des colonnes `browser` et `platform` peuvent être formulées différemment par la nouvelle bibliothèque pour un même navigateur ou système d'exploitation.
-Exemples : `"Chrome"` vs `"Chromium"`, `"Windows"` vs `"Windows 10"`.
+The `browser` and `platform` column values may be formatted differently by the new library for the same browser or operating system.
+Examples: `"Chrome"` vs `"Chromium"`, `"Windows"` vs `"Windows 10"`.
 
-Ce changement est **assumé et documenté** — ce n'est pas un bug à corriger.
-Les widgets **Browser usage** et **Platforms / OS** du dashboard peuvent afficher des entrées distinctes pour un même navigateur ou OS réel autour de la date de mise à jour, puis se consolider au fur et à mesure que les anciennes données purgées sont remplacées par de nouvelles.
+This change is **intentional and documented** — it is not a bug to fix.
+The **Browser usage** and **Platforms / OS** dashboard widgets may display distinct entries for the same real browser or OS around the update date, then consolidate as old purged data is replaced by new records.
 
 #### Composer constraint
 

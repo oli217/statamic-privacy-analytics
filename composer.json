@@ -33,7 +33,7 @@
     ],
     "support": {
         "email": "info@oliweb.ch",
-        "github": "https://github.com/oliweb-ch"
+        "github": "https://github.com/oliweb-ch/statamic-privacy-analytics"
     },
     "autoload": {
         "psr-4": {
