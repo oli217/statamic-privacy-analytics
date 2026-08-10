@@ -2,7 +2,7 @@
 
 A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-party scripts. No analytics-specific cookies by default (the addon uses the host application's Laravel session, which may itself rely on a session cookie). Your data stays on your server.
 
-> Fork of [mohammedshuaau/enhanced-analytics](https://github.com/mohammedshuaau/enhanced-analytics) — significantly extended and refactored.
+>Originally forked from [mohammedshuaau/enhanced-analytics](https://github.com/mohammedshuaau/enhanced-analytics). Since then, the project has diverged substantially: a privacy-first geolocation architecture (MaxMind local by default), a full data retention and anonymisation system, granular CP permissions, optional asynchronous tracking, and an extensive automated test suite — none of which existed in the original.
 
 ## Why this addon?
 
