@@ -4,3 +4,5 @@ phpunit.xml       export-ignore
 UPGRADE.md        export-ignore
 composer.lock     export-ignore
 .gitignore        export-ignore
+CONTRIBUTING.md   export-ignore
+SECURITY.md       export-ignore
