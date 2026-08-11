@@ -1,5 +1,5 @@
 # Privacy Analytics for Statamic
-![PHP Require](https://img.shields.io/badge/PHP-^8.3-blue?link=https://php.net)   ![Statamic 6](https://img.shields.io/badge/Statamic-6.0+-FF269E?link=https://statamic.com)  [![Tests](https://github.com/oliweb-ch/statamic-privacy-analytics/actions/workflows/tests.yml/badge.svg)](https://github.com/oliweb-ch/statamic-privacy-analytics/actions/workflows/tests.yml)
+![PHP Require](https://img.shields.io/badge/PHP-^8.3-blue?link=https://php.net)   ![Statamic 6](https://img.shields.io/badge/Statamic-6.0+-D4FF4C?link=https://statamic.com)  [![Tests](https://github.com/oliweb-ch/statamic-privacy-analytics/actions/workflows/tests.yml/badge.svg)](https://github.com/oliweb-ch/statamic-privacy-analytics/actions/workflows/tests.yml)
 
 
 A self-hosted, privacy-first analytics addon for Statamic. No Google. No third-party scripts. No analytics-specific cookies by default (the addon uses the host application's Laravel session, which may itself rely on a session cookie). Your data stays on your server.
