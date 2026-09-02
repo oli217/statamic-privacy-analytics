@@ -53,7 +53,7 @@ class HealthCheck extends Command
 
     // ─── Output helpers ────────────────────────────────────────────────────
 
-    private function pass(string $label, string $detail = ''): void
+    private function printOk(string $label, string $detail = ''): void
     {
         $line = "<fg=green>✓</> {$label}";
         if ($detail) {
@@ -62,7 +62,7 @@ class HealthCheck extends Command
         $this->line("  {$line}");
     }
 
-    private function alert(string $label, string $detail = ''): void
+    private function printWarn(string $label, string $detail = ''): void
     {
         $line = "<fg=yellow>⚠</> {$label}";
         if ($detail) {
@@ -72,7 +72,7 @@ class HealthCheck extends Command
         $this->warnings++;
     }
 
-    private function fail(string $label, string $detail = ''): void
+    private function printFail(string $label, string $detail = ''): void
     {
         $line = "<fg=red>✗</> {$label}";
         if ($detail) {
@@ -87,11 +87,11 @@ class HealthCheck extends Command
     private function checkConfiguration(): void
     {
         if (empty(config('statamic-analytics'))) {
-            $this->fail('Configuration', 'Config not loaded — run: php artisan vendor:publish --tag=statamic-analytics-config');
+            $this->printFail('Configuration', 'Config not loaded — run: php artisan vendor:publish --tag=statamic-analytics-config');
             return;
         }
 
-        $this->pass('Configuration');
+        $this->printOk('Configuration');
     }
 
     private function checkDatabase(): void
@@ -99,7 +99,7 @@ class HealthCheck extends Command
         try {
             DB::connection()->getPdo();
         } catch (\Exception $e) {
-            $this->fail('Database', 'Cannot connect: ' . $e->getMessage());
+            $this->printFail('Database', 'Cannot connect: ' . $e->getMessage());
             return;
         }
 
@@ -107,12 +107,12 @@ class HealthCheck extends Command
         $missing = array_values(array_filter($tables, fn ($t) => !Schema::hasTable($t)));
 
         if ($missing) {
-            $this->fail('Database', 'Missing tables: ' . implode(', ', $missing) . ' — run: php artisan migrate');
+            $this->printFail('Database', 'Missing tables: ' . implode(', ', $missing) . ' — run: php artisan migrate');
             return;
         }
 
         $count = DB::table('statamic_analytics_page_views')->count();
-        $this->pass('Database', "({$count} events)");
+        $this->printOk('Database', "({$count} events)");
     }
 
     private function checkCache(): void
@@ -121,20 +121,20 @@ class HealthCheck extends Command
             $key = 'statamic-analytics:health-' . uniqid();
             Cache::put($key, 'ok', 10);
             Cache::forget($key);
-            $this->pass('Cache', '(' . config('cache.default') . ')');
+            $this->printOk('Cache', '(' . config('cache.default') . ')');
         } catch (\Exception $e) {
-            $this->fail('Cache', $e->getMessage());
+            $this->printFail('Cache', $e->getMessage());
         }
     }
 
     private function checkEncryption(): void
     {
         if (empty(config('app.key'))) {
-            $this->fail('Encryption', 'APP_KEY is not set — encrypted jobs will fail');
+            $this->printFail('Encryption', 'APP_KEY is not set — encrypted jobs will fail');
             return;
         }
 
-        $this->pass('Encryption');
+        $this->printOk('Encryption');
     }
 
     private function checkQueue(): void
@@ -142,17 +142,17 @@ class HealthCheck extends Command
         $connection = config('statamic-analytics.tracking.queue_connection');
 
         if ($connection === null) {
-            $this->pass('Queue', '(synchronous)');
+            $this->printOk('Queue', '(synchronous)');
             return;
         }
 
         if (!array_key_exists($connection, config('queue.connections', []))) {
-            $this->fail('Queue', "Connection '{$connection}' not found in queue.connections");
+            $this->printFail('Queue', "Connection '{$connection}' not found in queue.connections");
             return;
         }
 
         $queueName = config('statamic-analytics.tracking.queue_name', 'analytics');
-        $this->pass('Queue', "(async · {$connection} · {$queueName})");
+        $this->printOk('Queue', "(async · {$connection} · {$queueName})");
     }
 
     private function checkGeoProvider(): void
@@ -160,10 +160,10 @@ class HealthCheck extends Command
         $provider = config('statamic-analytics.geolocation.provider', 'disabled');
 
         match ($provider) {
-            'disabled' => $this->alert('Geolocation', 'Disabled — country data will not be collected'),
-            'ip-api'   => $this->pass('Geolocation', '(ip-api.com, 45 req/min free tier)'),
+            'disabled' => $this->printWarn('Geolocation', 'Disabled — country data will not be collected'),
+            'ip-api'   => $this->printOk('Geolocation', '(ip-api.com, 45 req/min free tier)'),
             'maxmind'  => $this->checkMaxMind(),
-            default    => $this->fail('Geolocation', "Unknown provider: {$provider}"),
+            default    => $this->printFail('Geolocation', "Unknown provider: {$provider}"),
         };
     }
 
@@ -177,27 +177,27 @@ class HealthCheck extends Command
         );
 
         if (!$accountId || !$licenseKey) {
-            $this->alert('MaxMind credentials', 'MAXMIND_ACCOUNT_ID or MAXMIND_LICENSE_KEY missing — auto-update disabled');
+            $this->printWarn('MaxMind credentials', 'MAXMIND_ACCOUNT_ID or MAXMIND_LICENSE_KEY missing — auto-update disabled');
         } else {
-            $this->pass('MaxMind credentials');
+            $this->printOk('MaxMind credentials');
         }
 
         if (!file_exists($dbPath)) {
-            $this->fail('MaxMind database', "Not found: {$dbPath} — run: php artisan analytics:update-geoip");
+            $this->printFail('MaxMind database', "Not found: {$dbPath} — run: php artisan analytics:update-geoip");
             return;
         }
 
         if (!is_readable($dbPath)) {
-            $this->fail('MaxMind database', "Not readable: {$dbPath}");
+            $this->printFail('MaxMind database', "Not readable: {$dbPath}");
             return;
         }
 
         $age = (int) Carbon::createFromTimestamp(filemtime($dbPath))->diffInDays(now());
 
         if ($age > 30) {
-            $this->alert('MaxMind database', "{$age} days old — run: php artisan analytics:update-geoip");
+            $this->printWarn('MaxMind database', "{$age} days old — run: php artisan analytics:update-geoip");
         } else {
-            $this->pass('MaxMind database', "({$age} days old)");
+            $this->printOk('MaxMind database', "({$age} days old)");
         }
     }
 
@@ -225,9 +225,9 @@ class HealthCheck extends Command
         }
 
         if ($problems) {
-            $this->fail('Storage permissions', 'Not writable: ' . implode(', ', $problems));
+            $this->printFail('Storage permissions', 'Not writable: ' . implode(', ', $problems));
         } else {
-            $this->pass('Storage permissions');
+            $this->printOk('Storage permissions');
         }
     }
 
@@ -236,16 +236,16 @@ class HealthCheck extends Command
         $logPath = storage_path('logs/analytics-scheduler.log');
 
         if (!file_exists($logPath)) {
-            $this->alert('Scheduler', 'No scheduler log found — add to crontab: * * * * * php artisan schedule:run');
+            $this->printWarn('Scheduler', 'No scheduler log found — add to crontab: * * * * * php artisan schedule:run');
             return;
         }
 
         $hours = (int) Carbon::createFromTimestamp(filemtime($logPath))->diffInHours(now());
 
         if ($hours > 25) {
-            $this->alert('Scheduler', "Last activity {$hours}h ago — scheduler may not be running");
+            $this->printWarn('Scheduler', "Last activity {$hours}h ago — scheduler may not be running");
         } else {
-            $this->pass('Scheduler', "(last run {$hours}h ago)");
+            $this->printOk('Scheduler', "(last run {$hours}h ago)");
         }
     }
 
@@ -253,7 +253,7 @@ class HealthCheck extends Command
     {
         try {
             if (!Schema::hasTable('failed_jobs')) {
-                $this->alert('Failed jobs', 'failed_jobs table not found');
+                $this->printWarn('Failed jobs', 'failed_jobs table not found');
                 return;
             }
 
@@ -262,12 +262,12 @@ class HealthCheck extends Command
                 ->count();
 
             if ($count > 0) {
-                $this->alert('Failed jobs', "{$count} failed analytics job(s) — run: php artisan analytics:purge-failed-jobs");
+                $this->printWarn('Failed jobs', "{$count} failed analytics job(s) — run: php artisan analytics:purge-failed-jobs");
             } else {
-                $this->pass('Failed jobs');
+                $this->printOk('Failed jobs');
             }
         } catch (\Exception $e) {
-            $this->alert('Failed jobs', 'Could not query: ' . $e->getMessage());
+            $this->printWarn('Failed jobs', 'Could not query: ' . $e->getMessage());
         }
     }
 
@@ -276,12 +276,12 @@ class HealthCheck extends Command
         $strategy = config('statamic.static_caching.strategy');
 
         if (!$strategy) {
-            $this->pass('Static cache', '(not enabled)');
+            $this->printOk('Static cache', '(not enabled)');
             return;
         }
 
         if ($strategy === 'full') {
-            $this->alert(
+            $this->printWarn(
                 'Static cache (full)',
                 'PHP middleware is bypassed — add {{ statamic_analytics:tracker }} to your layout'
             );
@@ -289,16 +289,16 @@ class HealthCheck extends Command
         }
 
         // half strategy: middleware runs on cache miss, no action needed
-        $this->pass('Static cache', "(strategy: {$strategy})");
+        $this->printOk('Static cache', "(strategy: {$strategy})");
     }
 
     private function checkBeaconEndpoint(): void
     {
         if (!Route::has('statamic-analytics.track')) {
-            $this->fail('Beacon endpoint', 'Route statamic-analytics.track not found — addon may not be installed correctly');
+            $this->printFail('Beacon endpoint', 'Route statamic-analytics.track not found — addon may not be installed correctly');
             return;
         }
 
-        $this->pass('Beacon endpoint');
+        $this->printOk('Beacon endpoint');
     }
 }
