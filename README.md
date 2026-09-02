@@ -275,7 +275,9 @@ When the tag renders a script, the beacon fires after page load and sends a `GET
 | Visited pages (within session) | `sessionStorage` | Used for `is_new_page_visit` |
 | Last visit date / hour | `localStorage` | Used for `is_new_day_visit` / `is_new_hour_visit` |
 
-**Consent:** If `tracking.consent.enabled` is `true`, the JS tracker reads `analytics_consent` from `localStorage` (the same key written by the consent banner) and silently aborts if consent has not been given.
+**Consent:** If `tracking.consent.enabled` is `true`, the JS tracker reads `analytics_consent` from `localStorage` (the same key written by the consent banner) and silently aborts if consent has not been given. No identifier is created and no beacon is sent before consent.
+
+**Privacy note — persistent localStorage identifier:** In `strategy=full` mode, the tracker writes `_anl_vid` to `localStorage`. Unlike the standard mode (where `visitor_id` lives in the Laravel session and is cleared when the session expires), this identifier **persists across browser sessions** and carries no expiry. It is a first-party identifier stored in the visitor's browser and transmitted only as part of the beacon sent to your own server — no analytics cookies are set. This is an architectural consequence of full static caching (PHP session is unavailable). Mention it in your privacy policy if your legal context requires it.
 
 **Cache invalidation:** The tag output is baked into the static HTML file when the page is first cached. If you toggle the caching strategy, run `php artisan statamic:static:clear` to force regeneration.
 

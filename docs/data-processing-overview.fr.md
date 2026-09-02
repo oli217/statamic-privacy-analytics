@@ -14,7 +14,7 @@ Vos données de fréquentation restent sur votre propre serveur. Aucune n'est tr
 - l'adresse IP du visiteur, temporairement
 - le type d'appareil, le navigateur et le système d'exploitation
 - le pays et la ville, déduits de l'adresse IP
-- la page d'où provient le visiteur (site précédent), simplifiée pour ne conserver que le nom de domaine
+- la page d'où provient le visiteur (site précédent), simplifiée pour ne conserver que le schéma, le domaine et le chemin — les paramètres de l'URL et les ancres sont supprimés
 - un identifiant de session propre à l'outil, qui ne permet pas d'identifier une personne
 
 Si un visiteur est connecté à votre site (compte client, back-office), son identifiant de compte peut être associé temporairement à sa visite. Cette option est activée par défaut mais peut être désactivée sur demande.
@@ -47,16 +47,20 @@ L'accès au tableau de bord est protégé par deux niveaux de droits, attribuabl
 
 Un compte qui n'a ni l'un ni l'autre de ces droits ne voit pas le tableau de bord dans son interface d'administration.
 
-## Cookies
+## Cookies et stockage navigateur
 
-Aucun cookie propre à l'outil de statistiques n'est déposé sur le navigateur du visiteur. Le suivi s'appuie sur le mécanisme de session déjà utilisé par votre site pour son fonctionnement normal (panier, connexion, etc.), lequel peut lui-même reposer sur un cookie technique classique — indépendant de cet outil.
+Aucun cookie propre à l'outil de statistiques n'est déposé sur le navigateur du visiteur.
 
-Un bandeau de consentement optionnel peut être activé si vous souhaitez conditionner le suivi statistique à l'accord explicite du visiteur.
+Dans la configuration standard, le suivi s'appuie sur le mécanisme de session déjà utilisé par votre site pour son fonctionnement normal (panier, connexion, etc.), lequel peut lui-même reposer sur un cookie technique classique — indépendant de cet outil.
+
+**Si votre site utilise le cache statique complet** (`STATAMIC_STATIC_CACHING_STRATEGY=full`) : l'outil stocke un identifiant analytique persistant de première partie dans le `localStorage` du navigateur (et non dans un cookie). Cet identifiant (`_anl_vid`) n'a pas de date d'expiration et est utilisé uniquement pour distinguer les nouveaux visiteurs des visiteurs récurrents. Il ne quitte pas le navigateur, sauf sous forme de beacon analytique envoyé à votre propre serveur. Un identifiant de session (`_anl_sid`, effacé à la fermeture de l'onglet) est également stocké dans le `sessionStorage`.
+
+Un bandeau de consentement optionnel peut être activé si vous souhaitez conditionner le suivi statistique à l'accord explicite du visiteur. Lorsqu'il est activé, aucun identifiant n'est créé et aucun beacon n'est envoyé tant que le visiteur n'a pas donné son accord.
 
 ## En résumé, ce que ça change pour vous
 
 - Pas de sous-traitant à déclarer dans votre registre de traitement pour la fonction statistique, sauf si vous activez volontairement l'option de géolocalisation externe.
-- Pas de transfert de données hors de Suisse (ou du pays d'hébergement de votre site) pour cette fonctionnalité.
+- Pas de transfert de données hors de Suisse (ou du pays d'hébergement de votre site) **dans la configuration par défaut** (base MaxMind locale). Si l'option ip-api est activée, les adresses IP des visiteurs sont transmises à ip-api.com (service externe) pour la résolution géographique.
 - Pas d'abonnement ni de facturation liée au volume de trafic.
 - Les données peuvent être supprimées ou leur durée de conservation ajustée sur simple demande.
 

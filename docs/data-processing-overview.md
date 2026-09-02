@@ -14,7 +14,7 @@ On every page visit, the tool records:
 - the visitor's IP address, temporarily
 - device type, browser, and operating system
 - country and city, derived from the IP address
-- the referring page (where the visitor came from), simplified to the domain name only
+- the referring page (where the visitor came from), simplified to the scheme, domain, and path — query string parameters and fragments are discarded
 - a session identifier internal to the tool, which does not identify a specific person
 
 If a visitor is logged into your site (customer account, back office), their account identifier may be temporarily associated with their visit. This is enabled by default but can be turned off on request.
@@ -47,16 +47,20 @@ Access to the dashboard is protected by two levels of permission, assignable ind
 
 An account with neither permission simply does not see the dashboard in their admin interface.
 
-## Cookies
+## Cookies and browser storage
 
-No cookie specific to this analytics tool is set on the visitor's browser. Tracking relies on the session mechanism your site already uses for normal operation (cart, login, etc.), which may itself rely on a standard technical cookie, independent of this tool.
+No cookie specific to this analytics tool is set on the visitor's browser.
 
-An optional consent banner can be enabled if you want to make statistical tracking conditional on the visitor's explicit agreement.
+In the standard configuration, tracking relies on the session mechanism your site already uses for normal operation (cart, login, etc.), which may itself rely on a standard technical cookie, independent of this tool.
+
+**If your site uses full static caching** (`STATAMIC_STATIC_CACHING_STRATEGY=full`): the tool stores a persistent first-party analytics identifier in the browser's `localStorage` (not a cookie). This identifier (`_anl_vid`) has no expiry date and is used solely to distinguish new visitors from returning ones. It does not leave the browser except as part of the analytics beacon sent to your own server. A session-scoped identifier (`_anl_sid`, erased when the tab is closed) is also stored in `sessionStorage`.
+
+An optional consent banner can be enabled if you want to make statistical tracking conditional on the visitor's explicit agreement. When enabled, no identifier is created and no beacon is sent until the visitor consents.
 
 ## What this means for you in practice
 
 - No data processor to declare in your processing register for the analytics function, unless you deliberately enable the external geolocation option.
-- No data transfer outside Switzerland (or your site's hosting country) for this feature.
+- No data transfer outside Switzerland (or your site's hosting country) **in the default configuration** (MaxMind local database). If the optional ip-api provider is enabled, visitor IP addresses are transmitted to ip-api.com (an external service) for geolocation resolution.
 - No subscription or traffic-based billing.
 - Retention periods can be adjusted, or data deleted, on request.
 
