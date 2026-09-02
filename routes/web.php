@@ -9,4 +9,5 @@ Route::post('/statamic-analytics/consent', [ConsentController::class, 'store'])
 
 // Beacon JS tracker — GET sans CSRF (standard analytics, lecture seule côté navigateur)
 Route::get('/statamic-analytics/track', [TrackController::class, 'track'])
-    ->middleware(['throttle:120,1']);
+    ->middleware(['throttle:120,1'])
+    ->name('statamic-analytics.track');
