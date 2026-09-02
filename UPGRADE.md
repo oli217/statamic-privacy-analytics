@@ -1,5 +1,53 @@
 # Upgrade Guide
 
+## Upgrading to 4.6
+
+### No breaking changes
+
+v4.6 is fully backward-compatible. Existing installations continue to work without any modification.
+
+### New: JS tracker for `STATAMIC_STATIC_CACHING_STRATEGY=full`
+
+When Statamic serves pages via full static caching, nginx bypasses PHP entirely — the tracking middleware never runs. v4.6 introduces a JS tracker tag that bridges this gap.
+
+#### Who is affected?
+
+Only installations that use (or plan to use) `STATAMIC_STATIC_CACHING_STRATEGY=full`. All other configurations are unaffected.
+
+#### What to do
+
+Add the tag to your Antlers layout, once, alongside the consent banner if used:
+
+```antlers
+{{ statamic_analytics:tracker }}
+{{ statamic_analytics:consent_banner }}
+```
+
+The tag is a no-op when `strategy` is not `full` — it is safe and recommended to add it unconditionally. When `strategy=full`, it injects an inline JS beacon that sends visit data to a new server-side endpoint (`GET /statamic-analytics/track`). The endpoint applies the same rules as the middleware: bot detection, IP/path exclusions, queue/sync support.
+
+After any change to the static caching strategy, clear the static cache so pages regenerate with or without the script:
+
+```bash
+php artisan statamic:static:clear
+```
+
+#### What moves to the browser (strategy=full only)
+
+| Data | Storage | Notes |
+|---|---|---|
+| `visitor_id` | `localStorage` | Persistent across sessions — more accurate new/returning detection |
+| `session_id` | `sessionStorage` | Resets on tab close |
+| Visited pages within session | `sessionStorage` | Used for `is_new_page_visit` |
+| Last visit date / hour | `localStorage` | Used for `is_new_day_visit` / `is_new_hour_visit` |
+
+#### Composer constraint
+
+```bash
+composer require oliweb/statamic-privacy-analytics:^4.6
+```
+
+---
+
 ## Upgrading to 4.5
 
 ### Breaking change (data discontinuity, no config change): device detection library
