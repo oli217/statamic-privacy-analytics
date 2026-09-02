@@ -74,6 +74,7 @@ The widget links directly to the analytics dashboard. It is auto-injected if no 
 - **Automatic IP retention** — `ip_address`, `user_agent`, and `user_id` are anonymised (set to NULL) after 90 days by default; configurable via `ANALYTICS_IP_RETENTION_DAYS`
 - **HTML-only tracking** — only responses with a `200 OK` status **and** a `text/html` Content-Type are recorded. Automated scans (404s), static assets served by third-party addons (`.js`, `.wasm`, etc.), and API JSON responses are silently ignored without requiring a manual exclusion list.
 - **Session-safe** — the tracking middleware never invalidates or regenerates the session. It only adds its own keys (`analytics_session_started`, `visitor_id`, `visited_pages`, `last_visit_date`, `last_visit_hour`); all pre-existing session data (cart, auth, form state, etc.) is left intact.
+- **Full static caching compatible** — see [Static caching (`full` strategy)](#static-caching-full-strategy) below.
 
 ### CP Permissions
 
@@ -240,6 +241,45 @@ Schedule::command('analytics:update-geoip')->weekly()->tuesdays();
 ```
 
 MaxMind updates GeoLite2 every Tuesday — a weekly schedule on Tuesday is recommended.
+
+---
+
+---
+
+## Static caching (`full` strategy)
+
+When `STATAMIC_STATIC_CACHING_STRATEGY=full` is active, Statamic offloads pages to nginx as static HTML files. PHP is bypassed entirely on subsequent requests — the tracking middleware never runs.
+
+The addon handles this transparently via a JS tracker tag. Add it once to your Antlers layout, alongside the consent banner if used:
+
+```antlers
+{{ statamic_analytics:tracker }}
+{{ statamic_analytics:consent_banner }}
+```
+
+**How it works:**
+
+| Scenario | Tag renders | Middleware |
+|---|---|---|
+| `strategy=null` or `half` | *(empty string)* | active — handles tracking |
+| `strategy=full` | inline `<script>` beacon | bypassed by nginx |
+
+When the tag renders a script, the beacon fires after page load and sends a `GET` request to `/statamic-analytics/track`. The server then performs the same operations as the middleware: bot detection, geolocation, DB write.
+
+**What moves to `localStorage` / `sessionStorage`:**
+
+| Data | Storage | Notes |
+|---|---|---|
+| `visitor_id` | `localStorage` | Persistent across sessions — more accurate new/returning detection than the session-based approach |
+| `session_id` | `sessionStorage` | Resets on tab close |
+| Visited pages (within session) | `sessionStorage` | Used for `is_new_page_visit` |
+| Last visit date / hour | `localStorage` | Used for `is_new_day_visit` / `is_new_hour_visit` |
+
+**Consent:** If `tracking.consent.enabled` is `true`, the JS tracker reads `analytics_consent` from `localStorage` (the same key written by the consent banner) and silently aborts if consent has not been given.
+
+**Cache invalidation:** The tag output is baked into the static HTML file when the page is first cached. If you toggle the caching strategy, run `php artisan statamic:static:clear` to force regeneration.
+
+> **Do not add this tag if `strategy` is not `full`.** It auto-detects the strategy and renders nothing when the middleware is active, so including it unconditionally is safe and recommended.
 
 ---
 
@@ -443,11 +483,17 @@ Widgets that query `statamic_analytics_page_views` directly will show empty data
 ## Architecture
 
 ```
-HTTP request
+HTTP request (strategy ≠ full)
     └─ TrackPageVisit middleware
            ├─ $next($request) → executes the full request stack
            ├─ (skip if status ≠ 200 or Content-Type ≠ text/html)
            └─ INSERT into statamic_analytics_page_views   ← direct, real-time
+
+Static HTML served by nginx (strategy=full)
+    └─ <script> beacon ({{ statamic_analytics:tracker }})
+           └─ GET /statamic-analytics/track  ← always PHP, never cached
+                  ├─ bot detection, excluded IPs/paths
+                  └─ INSERT into statamic_analytics_page_views
 
 Scheduler (every N minutes)
     └─ analytics:process

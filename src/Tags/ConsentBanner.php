@@ -68,6 +68,51 @@ class ConsentBanner extends Tags
         }
     }
 
+    /**
+     * The {{ statamic_analytics:tracker }} tag.
+     *
+     * Rend un script de tracking JS uniquement si STATAMIC_STATIC_CACHING_STRATEGY=full.
+     * Dans tous les autres cas, le middleware TrackPageVisit gère le tracking côté serveur.
+     */
+    public function tracker(): string
+    {
+        if (config('statamic.static_caching.strategy') !== 'full') {
+            return '';
+        }
+
+        $consentRequired = config('statamic-analytics.tracking.consent.enabled', false) ? 'true' : 'false';
+        $endpoint        = '/statamic-analytics/track';
+
+        return <<<HTML
+<script>
+(function(){
+var cr={$consentRequired},ep='{$endpoint}';
+if(cr&&localStorage.getItem('analytics_consent')!=='accepted')return;
+var vid=localStorage.getItem('_anl_vid'),isNew=!vid;
+if(isNew){
+  vid=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);});
+  localStorage.setItem('_anl_vid',vid);
+}
+var sid=sessionStorage.getItem('_anl_sid');
+if(!sid){
+  sid=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);});
+  sessionStorage.setItem('_anl_sid',sid);
+}
+var url=window.location.pathname;
+var vp=[];try{vp=JSON.parse(sessionStorage.getItem('_anl_vp')||'[]');}catch(e){}
+var np=vp.indexOf(url)===-1;
+if(np){vp=vp.slice(-19);vp.push(url);sessionStorage.setItem('_anl_vp',JSON.stringify(vp));}
+var now=new Date(),today=now.toISOString().slice(0,10),hour=today+' '+('0'+now.getHours()).slice(-2);
+var ld=localStorage.getItem('_anl_ld'),lh=localStorage.getItem('_anl_lh');
+var p=new URLSearchParams({page_url:url,referrer_url:document.referrer||'',visitor_id:vid,session_id:sid,n:isNew?'1':'0',nd:ld!==today?'1':'0',nh:lh!==hour?'1':'0',np:np?'1':'0'});
+new Image().src=ep+'?'+p.toString();
+localStorage.setItem('_anl_ld',today);
+localStorage.setItem('_anl_lh',hour);
+})();
+</script>
+HTML;
+    }
+
     public function wildcard($method)
     {
         if ($method === 'consent_banner') {
