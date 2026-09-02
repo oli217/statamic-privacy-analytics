@@ -17,9 +17,11 @@ class TrackController extends Controller
      * Route GET — pas de CSRF requis (lecture seule côté navigateur).
      *
      * Modèle de confiance :
-     * - page_url    : dérivée du header Referer du beacon (valeur navigateur, non falsifiable
-     *                 par simple manipulation de query string). Fallback sur la valeur client
-     *                 uniquement si le header est absent (Referrer-Policy stricte).
+     * - page_url    : dérivée du header Referer du beacon, fourni automatiquement par les
+     *                 navigateurs (non manipulable via le query string). Un client HTTP arbitraire
+     *                 peut cependant forger ce header — risque d'intégrité analytics, pas de
+     *                 risque de sécurité. Fallback sur la valeur client si le header est absent
+     *                 (Referrer-Policy stricte ou extension navigateur).
      * - referrer_url: fournie par le JS (document.referrer). Le serveur ne peut pas la dériver
      *                 autrement. Valeur client, sanitisée (scheme + host + path uniquement).
      * - visitor_id, session_id : UUIDs générés côté client (localStorage/sessionStorage).
