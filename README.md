@@ -248,7 +248,7 @@ MaxMind updates GeoLite2 every Tuesday — a weekly schedule on Tuesday is recom
 
 ## Static caching (`full` strategy)
 
-When `STATAMIC_STATIC_CACHING_STRATEGY=full` is active, Statamic offloads pages to nginx as static HTML files. PHP is bypassed entirely on subsequent requests — the tracking middleware never runs.
+When `STATAMIC_STATIC_CACHING_STRATEGY=full` is active, Statamic offloads pages to nginx as static HTML files. On cached requests, PHP is bypassed entirely. On cache misses (first request per URL), PHP does run — but the middleware detects `strategy=full` and skips tracking immediately, leaving the beacon JS as the sole tracking path.
 
 The addon handles this transparently via a JS tracker tag. Add it once to your Antlers layout, alongside the consent banner if used:
 
@@ -262,7 +262,7 @@ The addon handles this transparently via a JS tracker tag. Add it once to your A
 | Scenario | Tag renders | Middleware |
 |---|---|---|
 | `strategy=null` or `half` | *(empty string)* | active — handles tracking |
-| `strategy=full` | inline `<script>` beacon | bypassed by nginx |
+| `strategy=full` | inline `<script>` beacon | self-disabled (early return, even on cache miss) |
 
 When the tag renders a script, the beacon fires after page load and sends a `GET` request to `/statamic-analytics/track`. The server then performs the same operations as the middleware: bot detection, geolocation, DB write.
 
@@ -522,7 +522,7 @@ Statamic Analytics — Health Check
 | Storage permissions | Analytics cache, logs, and geoip directories are writable |
 | Scheduler | `analytics-scheduler.log` exists and modified within the last 25 hours |
 | Failed jobs | Count of `TrackPageViewJob` entries in `failed_jobs` |
-| Static cache | `full` strategy → reminder to add `{{ statamic_analytics:tracker }}` |
+| Static cache | `full` strategy → middleware self-disabled, beacon JS handles tracking |
 | Beacon endpoint | Route `statamic-analytics.track` is registered |
 
 The command exits with code `1` if any check fails (`✗`), making it usable in deployment pipelines and monitoring scripts. Warnings (`⚠`) do not affect the exit code.

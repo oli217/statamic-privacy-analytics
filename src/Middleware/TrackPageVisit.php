@@ -33,6 +33,11 @@ class TrackPageVisit
 
     public function handle(Request $request, Closure $next)
     {
+        // ponytail: full static cache → beacon JS handles tracking; skip middleware to avoid double-track on cache miss
+        if (config('statamic.static_caching.strategy') === 'full') {
+            return $next($request);
+        }
+
         $response = $next($request);
 
         try {

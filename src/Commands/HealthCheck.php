@@ -281,9 +281,9 @@ class HealthCheck extends Command
         }
 
         if ($strategy === 'full') {
-            $this->printWarn(
+            $this->printOk(
                 'Static cache (full)',
-                'PHP middleware is bypassed — add {{ statamic_analytics:tracker }} to your layout'
+                'middleware disabled — beacon JS handles tracking via {{ statamic_analytics:tracker }}'
             );
             return;
         }
