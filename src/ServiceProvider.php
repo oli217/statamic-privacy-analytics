@@ -16,6 +16,7 @@ class ServiceProvider extends AddonServiceProvider
         Commands\AnonymizeIps::class,
         Commands\PurgeRawEvents::class,
         Commands\PurgeFailedJobs::class,
+        Commands\HealthCheck::class,
     ];
 
     protected $routes = [

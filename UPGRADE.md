@@ -1,5 +1,44 @@
 # Upgrade Guide
 
+## Upgrading to 4.7
+
+### No breaking changes
+
+v4.7 is fully backward-compatible.
+
+### New: `analytics:health` diagnostic command
+
+```bash
+php artisan analytics:health
+```
+
+Runs 11 diagnostic checks and prints a colour-coded summary with actionable suggestions for any issue found:
+
+| Check | What is verified |
+|---|---|
+| Configuration | Config file loaded |
+| Database | Connection + tables present |
+| Cache | Write / read / delete cycle |
+| Encryption | `APP_KEY` is set |
+| Queue | Configured connection exists; synchronous if `null` |
+| Geolocation | Provider configured |
+| MaxMind | Credentials, `.mmdb` file, age ≤ 30 days |
+| Storage permissions | Cache, logs, geoip directories writable |
+| Scheduler | `analytics-scheduler.log` activity within last 25 hours |
+| Failed jobs | `TrackPageViewJob` count in `failed_jobs` |
+| Static cache | Warns if `full` strategy is active without the tracker tag |
+| Beacon endpoint | Route `statamic-analytics.track` registered |
+
+Exits with code `1` on any failure — usable in deployment scripts and monitoring.
+
+### Composer constraint
+
+```bash
+composer require oliweb/statamic-privacy-analytics:^4.7
+```
+
+---
+
 ## Upgrading to 4.6
 
 ### No breaking changes

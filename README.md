@@ -482,6 +482,53 @@ Widgets that query `statamic_analytics_page_views` directly will show empty data
 
 ---
 
+## Health check
+
+```bash
+php artisan analytics:health
+```
+
+Runs a series of diagnostic checks and prints a colour-coded summary:
+
+```
+Statamic Analytics — Health Check
+──────────────────────────────────────────────────
+  ✓ Configuration
+  ✓ Database                 (42 381 events)
+  ✓ Cache                    (redis)
+  ✓ Encryption
+  ✓ Queue                    (synchronous)
+  ✓ MaxMind credentials
+  ✓ MaxMind database         (3 days old)
+  ✓ Storage permissions
+  ⚠ Scheduler
+    Last activity 26h ago — scheduler may not be running
+  ✓ Failed jobs
+  ✓ Static cache             (not enabled)
+  ✓ Beacon endpoint
+──────────────────────────────────────────────────
+  1 warning(s) — review output above
+```
+
+| Check | What is verified |
+|---|---|
+| Configuration | Config file loaded |
+| Database | Connection + tables present + event count |
+| Cache | Write / read / delete a temporary key |
+| Encryption | `APP_KEY` is set (required for encrypted job payloads) |
+| Queue | Connection exists in `queue.connections`; synchronous if `null` |
+| Geolocation | Provider configured; `disabled` → warning |
+| MaxMind | Credentials present, `.mmdb` file exists and readable, age ≤ 30 days |
+| Storage permissions | Analytics cache, logs, and geoip directories are writable |
+| Scheduler | `analytics-scheduler.log` exists and modified within the last 25 hours |
+| Failed jobs | Count of `TrackPageViewJob` entries in `failed_jobs` |
+| Static cache | `full` strategy → reminder to add `{{ statamic_analytics:tracker }}` |
+| Beacon endpoint | Route `statamic-analytics.track` is registered |
+
+The command exits with code `1` if any check fails (`✗`), making it usable in deployment pipelines and monitoring scripts. Warnings (`⚠`) do not affect the exit code.
+
+---
+
 ## Architecture
 
 ```
