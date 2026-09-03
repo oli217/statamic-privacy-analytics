@@ -73,6 +73,12 @@ class ConsentBanner extends Tags
      *
      * Rend un script de tracking JS uniquement si STATAMIC_STATIC_CACHING_STRATEGY=full.
      * Dans tous les autres cas, le middleware TrackPageVisit gère le tracking côté serveur.
+     *
+     * ⚠ SYNCHRONISATION : ce script inline est la version de production de
+     * resources/js/tracker.js (lisible, commenté, couvert par Vitest).
+     * Toute modification de la logique ici doit être répercutée dans tracker.js,
+     * et vice-versa — les tests Vitest servent de spec exécutable.
+     * Clés de stockage partagées : _anl_vid, _anl_sid, _anl_vp, _anl_ld, _anl_lh
      */
     public function tracker(): string
     {

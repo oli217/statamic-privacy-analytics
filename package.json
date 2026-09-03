@@ -4,7 +4,9 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "watch": "vite build --watch"
+        "watch": "vite build --watch",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "alpinejs": "^3.13.3",
@@ -13,9 +15,11 @@
     "devDependencies": {
         "@tailwindcss/vite": "^4.2.1",
         "@vitejs/plugin-vue": "^6.0.4",
+        "jsdom": "^29.1.1",
         "laravel-vite-plugin": "^2.1.0",
         "tailwindcss": "^4.2.1",
         "vite": "^7.3.1",
+        "vitest": "^5.0.0",
         "vue": "^3.5.0"
     }
 }

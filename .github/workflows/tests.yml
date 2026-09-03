@@ -100,6 +100,22 @@ jobs:
           DB_PASSWORD: root
         run: vendor/bin/phpunit
 
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm run test
+
   test-redis:
     runs-on: ubuntu-latest
     services:

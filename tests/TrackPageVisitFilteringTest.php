@@ -316,4 +316,25 @@ class TrackPageVisitFilteringTest extends TestCase
 
         Queue::assertNothingPushed();
     }
+
+    // -------------------------------------------------------------------------
+    // 7. Static caching full
+    //
+    // En strategy=full, Statamic sert les pages depuis un cache HTML statique
+    // sans passer par le middleware PHP. Le middleware est donc auto-désactivé
+    // pour éviter un double-tracking lors des cache miss (requête initiale).
+    // Le seul chemin de tracking en production est le beacon JS → TrackController.
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function test_middleware_skipe_sans_tracker_en_strategy_full(): void
+    {
+        Queue::fake();
+        $this->baseConfig();
+        config(['statamic.static_caching.strategy' => 'full']);
+
+        (new TrackPageVisit())->handle($this->makeRequest(), fn($req) => $this->htmlResponse());
+
+        Queue::assertNothingPushed();
+    }
 }
